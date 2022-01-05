@@ -1,199 +1,179 @@
-import cv2
-import yaml
-import enum
-import numpy as np
-import dataclasses
-from typing import Optional
-from scipy.spatial.transform import Rotation
+function readTextFile(file)
+{   
+    var allText;
+    var rawFile = new XMLHttpRequest();
+    rawFile.open("GET", file, false);
+    rawFile.onreadystatechange = function ()
+    {
+        if(rawFile.readyState === 4)
+        {
+            if(rawFile.status === 200 || rawFile.status == 0)
+            {
+                allText = rawFile.responseText;
+                
+            }
+        }
+    }
+    rawFile.send(null);
+    return allText;
+}
 
-@dataclasses.dataclass()
-class Camera:
-    width: int = dataclasses.field(init=False)
-    height: int = dataclasses.field(init=False)
-    camera_matrix: np.ndarray = dataclasses.field(init=False)
-    dist_coefficients: np.ndarray = dataclasses.field(init=False)
 
-    camera_params_path: dataclasses.InitVar[str] = None
+class Camera {
 
-    def __post_init__(self, camera_params_path):
-        with open(camera_params_path) as f:
-            data = yaml.safe_load(f)
-        self.width = data['image_width']
-        self.height = data['image_height']
-        self.camera_matrix = np.array(data['camera_matrix']['data']).reshape(
-            3, 3)
-        self.dist_coefficients = np.array(
-            data['distortion_coefficients']['data']).reshape(-1, 1)
+    constructor(camera_params_path){
+        const cam_data = jsyaml.load(readTextFile(camera_params_path));
+        this.width = cam_data.image_width;
+        this.height = cam_data.image_height;
+        this.camera_matrix = cam_data.camera_matrix;
+        this.dist_coefficients = cam_data.distortion_coefficients;
+    }
 
-    def project_points(self,
-                       points3d: np.ndarray,
-                       rvec: Optional[np.ndarray] = None,
-                       tvec: Optional[np.ndarray] = None) -> np.ndarray:
-        assert points3d.shape[1] == 3
-        if rvec is None:
-            rvec = np.zeros(3, dtype=np.float)
-        if tvec is None:
-            tvec = np.zeros(3, dtype=np.float)
-        points2d, _ = cv2.projectPoints(points3d, rvec, tvec,
-                                        self.camera_matrix,
-                                        self.dist_coefficients)
-        return points2d.reshape(-1, 2)
+    project_points(points3d, rvec, tvec){
+        
+    }
+}
 
-class FacePartsName(enum.Enum):
-    FACE = enum.auto()
-    REYE = enum.auto()
-    LEYE = enum.auto()
+class FaceParts {
+    constructor(name){
+        this.name = name;
+        this.center;
+        this.head_pose_rot;
+        this.normalizing_rot;
+        this.normalized_head_rot2d;
+        this.normalized_image;
 
-class FaceParts:
-    def __init__(self, name: FacePartsName):
-        self.name = name
-        self.center: Optional[np.ndarray] = None
-        self.head_pose_rot: Optional[Rotation] = None
-        self.normalizing_rot: Optional[Rotation] = None
-        self.normalized_head_rot2d: Optional[np.ndarray] = None
-        self.normalized_image: Optional[np.ndarray] = None
+        this.normalized_gaze_angles;
+        this.normalized_gaze_vector;
+        this.gaze_vector;
+    }
 
-        self.normalized_gaze_angles: Optional[np.ndarray] = None
-        self.normalized_gaze_vector: Optional[np.ndarray] = None
-        self.gaze_vector: Optional[np.ndarray] = None
+    get distance() {
+        return math.norm(this.center)
+    }
 
-    @property
-    def distance(self) -> float:
-        return np.linalg.norm(self.center)
+    angle_to_vector(){
+        var [pitch, yaw] = this.normalized_gaze_angles
+        this.normalized_gaze_vector = [
+            math.cos(pitch) * math.sin(yaw),
+            math.sin(pitch),
+            math.cos(pitch) * math.cos(yaw)
+        ]
+    }
 
-    def angle_to_vector(self) -> None:
-        pitch, yaw = self.normalized_gaze_angles
-        self.normalized_gaze_vector = -np.array([
-            np.cos(pitch) * np.sin(yaw),
-            np.sin(pitch),
-            np.cos(pitch) * np.cos(yaw)
-        ])
+    denormalize_gaze_vector(){
+        normalizing_rot = this.normalizing_rot //.as_matrix()
+        this.gaze_vector = this.normalized_gaze_vector * normalizing_rot
+    }
 
-    def denormalize_gaze_vector(self) -> None:
-        normalizing_rot = self.normalizing_rot.as_matrix()
-        # Here gaze vector is a row vector, and rotation matrices are
-        # orthogonal, so multiplying the rotation matrix from the right is
-        # the same as multiplying the inverse of the rotation matrix to the
-        # column gaze vector from the left.
-        self.gaze_vector = self.normalized_gaze_vector @ normalizing_rot
+    vector_to_angle(vector){
+        var [x, y, z] = vector
+        pitch = math.asin(-y)
+        yaw = math.atan2(-x, -z)
+        return [pitch, yaw]
+    }
+}
 
-    @staticmethod
-    def vector_to_angle(vector: np.ndarray) -> np.ndarray:
-        assert vector.shape == (3, )
-        x, y, z = vector
-        pitch = np.arcsin(-y)
-        yaw = np.arctan2(-x, -z)
-        return np.array([pitch, yaw])
+class Eye extends FaceParts {
 
-class Eye(FaceParts):
-    pass
+}
 
-class Face(FaceParts):
-    def __init__(self, bbox: np.ndarray, landmarks: np.ndarray):
-        super().__init__(FacePartsName.FACE)
-        self.bbox = bbox
-        self.landmarks = landmarks
+class Face extends FaceParts {
+    constructor(bbox, landmarks){
+        super();
+        this.bbox = bbox
+        this.landmarks = landmarks
+        this.head_position
+        this.model3d
+    }
+    change_coordinate_system(euler_angles){
+        return math.dotMultiply(euler_angles, [-1, 1, -1]) 
+    }
+}
 
-        self.reye: Eye = Eye(FacePartsName.REYE)
-        self.leye: Eye = Eye(FacePartsName.LEYE)
+class FaceModel {
+    LANDMARKS
+    REYE_INDICES
+    LEYE_INDICES
+    MOUTH_INDICES
+    NOSE_INDICES
+    CHIN_INDEX
+    NOSE_INDEX
 
-        self.head_position: Optional[np.ndarray] = None
-        self.model3d: Optional[np.ndarray] = None
+    estimate_head_pose(face, camera){
+        const num = 40
+        var LANDMARKS;
+        var face_landmarks;
+        var camera_matrix;
+        var dist_coefficients
+        var rvec = new cv.Mat({ width: 1, height: 3 }, cv.CV_64FC1);
+        var tvec = new cv.Mat({ width: 1, height: 3 }, cv.CV_64FC1);
+        var rot = new cv.Mat({ width: 3, height: 3 }, cv.CV_64FC1);
+        tvec.data64F[0] = -100;
+        tvec.data64F[1] = 100;
+        tvec.data64F[2] = 1000;
+        rvec.data64F[0] = -1.0;
+        rvec.data64F[1] = -0.75;
+        rvec.data64F[2] = -3.0;
+        // var LANDMARKS = new cv.matFromArray(this.LANDMARKS.length, this.LANDMARKS[0].length, cv.CV_64FC1, this.LANDMARKS);
+        LANDMARKS = new cv.Mat(this.LANDMARKS.length, this.LANDMARKS[0].length, cv.CV_64FC1);
+        for(let i=0;i<LANDMARKS.rows;i++){
+            LANDMARKS.doublePtr(i,0)[0] = this.LANDMARKS[i][0];
+            LANDMARKS.doublePtr(i,1)[0] = this.LANDMARKS[i][1];
+            LANDMARKS.doublePtr(i,2)[0] = this.LANDMARKS[i][2];   
+        }
+        // var face_landmarks = new cv.matFromArray(face.landmarks.length, face.landmarks[0].length, cv.CV_64FC1, face.landmarks); 
+        face_landmarks = new cv.Mat(LANDMARKS.rows, face.landmarks[0].length, cv.CV_64FC1); 
+        for(let i=0;i<LANDMARKS.rows;i++){
+            face_landmarks.doublePtr(i,0)[0] = parseInt(face.landmarks[i][0])
+            face_landmarks.doublePtr(i,1)[0] = parseInt(face.landmarks[i][1])
+        }
+        camera_matrix = new cv.matFromArray(camera.camera_matrix.rows, camera.camera_matrix.cols, cv.CV_64FC1, camera.camera_matrix.data); 
+        // var dist_coefficients = new cv.matFromArray(camera.dist_coefficients.rows, camera.dist_coefficients.cols, cv.CV_64FC1, camera.dist_coefficients.data); 
+        dist_coefficients = new cv.matFromArray(4, 1, cv.CV_64FC1, [0,0,0,0]);
+        const success = cv.solvePnP(LANDMARKS, face_landmarks, camera_matrix, dist_coefficients, rvec, tvec, true)
+        console.log("!!",success)
+        cv.Rodrigues(rvec, rot)  //"rot mat" // Rotation.from_rotvec(rvec)
 
-    @staticmethod
-    def change_coordinate_system(euler_angles: np.ndarray) -> np.ndarray:
-        return euler_angles * np.array([-1, 1, -1])
-
-class FaceModel:
-    LANDMARKS: np.ndarray
-    REYE_INDICES: np.ndarray
-    LEYE_INDICES: np.ndarray
-    MOUTH_INDICES: np.ndarray
-    NOSE_INDICES: np.ndarray
-    CHIN_INDEX: int
-    NOSE_INDEX: int
-
-    def estimate_head_pose(self, face: Face, camera: Camera) -> None:
-        """Estimate the head pose by fitting 3D template model."""
-        # If the number of the template points is small, cv2.solvePnP
-        # becomes unstable, so set the default value for rvec and tvec
-        # and set useExtrinsicGuess to True.
-        # The default values of rvec and tvec below mean that the
-        # initial estimate of the head pose is not rotated and the
-        # face is in front of the camera.
-        rvec = np.zeros(3, dtype=np.float)
-        tvec = np.array([0, 0, 1], dtype=np.float)
-        wtvec = np.array([0, 0, 1], dtype=np.float)
-        _, _, tvec = cv2.solvePnP(self.LANDMARKS,
-                                     face.landmarks,
-                                     camera.camera_matrix,
-                                     camera.dist_coefficients,
-                                     rvec,
-                                     tvec,
-                                     useExtrinsicGuess=True,
-                                     flags=cv2.SOLVEPNP_ITERATIVE)
-        _, rvec, _ = cv2.solvePnP(self.LANDMARKS,
-                                     face.landmarks - face.landmarks[0] + np.array([[640//2,480//2]]),
-                                     camera.camera_matrix,
-                                     camera.dist_coefficients,
-                                     rvec,
-                                     wtvec,
-                                     useExtrinsicGuess=True,
-                                     flags=cv2.SOLVEPNP_ITERATIVE)
-        rot = Rotation.from_rotvec(rvec)
         face.head_pose_rot = rot
         face.head_position = tvec
-        face.reye.head_pose_rot = rot
-        face.leye.head_pose_rot = rot
+        // face.reye.head_pose_rot = rot
+        // face.leye.head_pose_rot = rot
+        return face
+    }
 
-    def compute_3d_pose(self, face: Face) -> None:
-        """Compute the transformed model."""
-        rot = face.head_pose_rot.as_matrix()
-        face.model3d = self.LANDMARKS @ rot.T + face.head_position
+    compute_3d_pose(face){
+        
+        var rot = face.head_pose_rot //.as_matrix()
+        var mat = math.matrix(Array.from(rot.data64F))
+        var rot_T = math.transpose(mat)
+        var mat = math.matrix(rot_T)
+        var mat = math.reshape(mat,[3,3])
+        var mul = math.multiply(this.LANDMARKS, mat).toArray()
+        for(let i=0;i<this.LANDMARKS.length;i++){
+            mul[i] = math.add(mul[i], Array.from(face.head_position.data64F)) 
+        } 
+        face.model3d = mul
+        return face
+    }
 
-    def compute_face_eye_centers(self, face: Face, mode: str) -> None:
-        """Compute the centers of the face and eyes.
+    compute_face_eye_centers(face){
+        let indexes = this.REYE_INDICES.concat(this.LEYE_INDICES, this.NOSE_INDICES)
+        face.center = math.apply(indexes.map(x=>face.model3d[x]),0,math.mean)
+        return face
+        // face.reye.center = face.model3d[this.REYE_INDICES].mean(axis=0)
+        // face.leye.center = face.model3d[this.LEYE_INDICES].mean(axis=0)
+    }
+} 
 
-        In the case of MPIIFaceGaze, the face center is defined as the
-        average coordinates of the six points at the corners of both
-        eyes and the mouth. In the case of ETH-XGaze, it's defined as
-        the average coordinates of the six points at the corners of both
-        eyes and the nose. The eye centers are defined as the average
-        coordinates of the corners of each eye.
-        """
-        if mode == 'ETH-XGaze':
-            face.center = face.model3d[np.concatenate(
-                [self.REYE_INDICES, self.LEYE_INDICES,
-                 self.NOSE_INDICES])].mean(axis=0)
-        else:
-            face.center = face.model3d[np.concatenate(
-                [self.REYE_INDICES, self.LEYE_INDICES,
-                 self.MOUTH_INDICES])].mean(axis=0)
-        face.reye.center = face.model3d[self.REYE_INDICES].mean(axis=0)
-        face.leye.center = face.model3d[self.LEYE_INDICES].mean(axis=0)
-
-
-
-@dataclasses.dataclass(frozen=True)
-class FaceModelMediaPipe(FaceModel):
-    """3D face model for MediaPipe 468 points mark-up.
-
-    In the camera coordinate system, the X axis points to the right from
-    camera, the Y axis points down, and the Z axis points forward.
-
-    The face model is facing the camera. Here, the Z axis is
-    perpendicular to the plane passing through the three midpoints of
-    the eyes and mouth, the X axis is parallel to the line passing
-    through the midpoints of both eyes, and the origin is at the tip of
-    the nose.
-
-    The units of the coordinate system are meters and the distance
-    between outer eye corners of the model is set to 90mm.
-
-    The model coordinate system is defined as the camera coordinate
-    system rotated 180 degrees around the Y axis.
-    """
-    LANDMARKS: np.ndarray = np.array([
+class FaceModelMediaPipe extends FaceModel {
+    REYE_INDICES = [33, 133]
+    LEYE_INDICES = [362, 263]
+    MOUTH_INDICES = [78, 308]
+    NOSE_INDICES = [240, 460]
+    CHIN_INDEX = 199
+    NOSE_INDEX = 1
+    LANDMARKS = [
         [0.0, 0.02279539, 0.01496097],
         [0.0, 0.0, 0.0],
         [0.0, 0.00962159, 0.01417337],
@@ -662,13 +642,5 @@ class FaceModelMediaPipe(FaceModel):
         [0.01031362, -0.03509528, 0.02859755],
         [0.04253081, -0.03899161, 0.04160299],
         [0.0453, -0.04036865, 0.04135919],
-    ],
-                                     dtype=np.float64)
-
-    REYE_INDICES: np.ndarray = np.array([33, 133])
-    LEYE_INDICES: np.ndarray = np.array([362, 263])
-    MOUTH_INDICES: np.ndarray = np.array([78, 308])
-    NOSE_INDICES: np.ndarray = np.array([240, 460])
-
-    CHIN_INDEX: int = 199
-    NOSE_INDEX: int = 1
+    ]
+}

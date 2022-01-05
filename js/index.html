@@ -7,6 +7,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>
+  <script src="./modules/opencv.js"></script>
+  <script src="./modules/js-yaml.min.js"></script>
+  <script src="./modules/math.min.js"></script>
+  <script src="./modules/three.min.js"></script>
+  <script src="./modules/ndarray-browser-min.js"></script>
+  <script src="./modules/image-loader.js"></script>
+  <script src="./face_cam.js"></script>
+  <script src="./asset.js"></script>
 </head>
 
 <body>
@@ -15,9 +23,9 @@
   <div id="gaze"></div>
   <div class="container">
       <video class="input_video"></video>
+      <img id="input_img" src="test.jpg">
       <canvas id="myCanvas" class="output_canvas" width="1280px" height="720px"></canvas> 
       <canvas id="cvCanvas"></canvas>
-  </div>
-
+  </div>  
   <script src="index.js"> </script>
 </body>

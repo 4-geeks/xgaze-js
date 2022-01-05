@@ -3,11 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
+# my files and folders
 *.pth
 *.pt
 *.h5
+*/modules
+*/dist
+
+# C extensions
+*.so
+
 
 # Distribution / packaging
 .Python
