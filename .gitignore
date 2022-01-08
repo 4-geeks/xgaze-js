@@ -7,8 +7,13 @@ __pycache__/
 *.pth
 *.pt
 *.h5
+*.zip
+*.yaml
+*.jpg
+*.png
 */modules
 */dist
+
 
 # C extensions
 *.so

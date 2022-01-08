@@ -106,8 +106,8 @@ class FaceModel {
         var face_landmarks;
         var camera_matrix;
         var dist_coefficients
-        var rvec = new cv.Mat({ width: 1, height: 3 }, cv.CV_64FC1);
-        var tvec = new cv.Mat({ width: 1, height: 3 }, cv.CV_64FC1);
+        var rvec = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
+        var tvec = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
         var rot = new cv.Mat({ width: 3, height: 3 }, cv.CV_64FC1);
         tvec.data64F[0] = -100;
         tvec.data64F[1] = 100;
@@ -132,7 +132,6 @@ class FaceModel {
         // var dist_coefficients = new cv.matFromArray(camera.dist_coefficients.rows, camera.dist_coefficients.cols, cv.CV_64FC1, camera.dist_coefficients.data); 
         dist_coefficients = new cv.matFromArray(4, 1, cv.CV_64FC1, [0,0,0,0]);
         const success = cv.solvePnP(LANDMARKS, face_landmarks, camera_matrix, dist_coefficients, rvec, tvec, true)
-        console.log("!!",success)
         cv.Rodrigues(rvec, rot)  //"rot mat" // Rotation.from_rotvec(rvec)
 
         face.head_pose_rot = rot
@@ -146,10 +145,8 @@ class FaceModel {
         
         var rot = face.head_pose_rot //.as_matrix()
         var mat = math.matrix(Array.from(rot.data64F))
-        var rot_T = math.transpose(mat)
-        var mat = math.matrix(rot_T)
-        var mat = math.reshape(mat,[3,3])
-        var mul = math.multiply(this.LANDMARKS, mat).toArray()
+        var rot_T = math.reshape(math.transpose(mat),[3,3])
+        var mul = math.multiply(this.LANDMARKS, rot_T).toArray()
         for(let i=0;i<this.LANDMARKS.length;i++){
             mul[i] = math.add(mul[i], Array.from(face.head_position.data64F)) 
         } 
