@@ -35,7 +35,7 @@ function readJson(jsonPath){
     return data
   }
 
-class Camera {
+class CameraObj {
 
     constructor(camera_params_path){
         const cam_data = jsyaml.load(readTextFile(camera_params_path));
