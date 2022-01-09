@@ -18,6 +18,22 @@ function readTextFile(file)
     return allText;
 }
 
+function readJson(jsonPath){
+    var data ;
+    const file = jsonPath
+    var rawFile = new XMLHttpRequest();
+    rawFile.overrideMimeType("application/json");
+    rawFile.open("GET", file, false); // [true] indicates that the request should be handled asynchronously.
+    rawFile.onreadystatechange = function() {
+        if (rawFile.readyState === 4 && rawFile.status == "200") {
+          data = JSON.parse(rawFile.responseText);
+  
+        }
+    }
+    rawFile.send(null)
+    
+    return data
+  }
 
 class Camera {
 
@@ -101,43 +117,26 @@ class FaceModel {
     NOSE_INDEX
 
     estimate_head_pose(face, camera){
-        const num = 40
-        var LANDMARKS;
-        var face_landmarks;
-        var camera_matrix;
-        var dist_coefficients
-        var rvec = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
-        var tvec = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
         var rot = new cv.Mat({ width: 3, height: 3 }, cv.CV_64FC1);
-        tvec.data64F[0] = -100;
-        tvec.data64F[1] = 100;
-        tvec.data64F[2] = 1000;
-        rvec.data64F[0] = -1.0;
-        rvec.data64F[1] = -0.75;
-        rvec.data64F[2] = -3.0;
-        // var LANDMARKS = new cv.matFromArray(this.LANDMARKS.length, this.LANDMARKS[0].length, cv.CV_64FC1, this.LANDMARKS);
-        LANDMARKS = new cv.Mat(this.LANDMARKS.length, this.LANDMARKS[0].length, cv.CV_64FC1);
-        for(let i=0;i<LANDMARKS.rows;i++){
-            LANDMARKS.doublePtr(i,0)[0] = this.LANDMARKS[i][0];
-            LANDMARKS.doublePtr(i,1)[0] = this.LANDMARKS[i][1];
-            LANDMARKS.doublePtr(i,2)[0] = this.LANDMARKS[i][2];   
-        }
-        // var face_landmarks = new cv.matFromArray(face.landmarks.length, face.landmarks[0].length, cv.CV_64FC1, face.landmarks); 
-        face_landmarks = new cv.Mat(LANDMARKS.rows, face.landmarks[0].length, cv.CV_64FC1); 
-        for(let i=0;i<LANDMARKS.rows;i++){
-            face_landmarks.doublePtr(i,0)[0] = parseInt(face.landmarks[i][0])
-            face_landmarks.doublePtr(i,1)[0] = parseInt(face.landmarks[i][1])
-        }
-        camera_matrix = new cv.matFromArray(camera.camera_matrix.rows, camera.camera_matrix.cols, cv.CV_64FC1, camera.camera_matrix.data); 
-        // var dist_coefficients = new cv.matFromArray(camera.dist_coefficients.rows, camera.dist_coefficients.cols, cv.CV_64FC1, camera.dist_coefficients.data); 
-        dist_coefficients = new cv.matFromArray(4, 1, cv.CV_64FC1, [0,0,0,0]);
-        const success = cv.solvePnP(LANDMARKS, face_landmarks, camera_matrix, dist_coefficients, rvec, tvec, true)
-        cv.Rodrigues(rvec, rot)  //"rot mat" // Rotation.from_rotvec(rvec)
 
+        var canonicalPoints = readJson("./canonical_face_points.json")["points"]
+        var model_points = new cv.Mat(468, 3, cv.CV_64FC1);
+        for(let i=0;i<468;i++){
+            model_points.doublePtr(i,0)[0] = canonicalPoints[i].x / 100;
+            model_points.doublePtr(i,1)[0] = canonicalPoints[i].y / 100;
+            model_points.doublePtr(i,2)[0] = canonicalPoints[i].z / 100;
+        }
+        var face_points = new cv.matFromArray(468, 2, cv.CV_64FC1, face.landmarks.slice(0,468).flat());
+        var camera_matrix = new cv.matFromArray(3, 3, cv.CV_64FC1, camera.camera_matrix.data);
+        var dist_coefficients = new cv.matFromArray(1, 5, cv.CV_64FC1, camera.dist_coefficients.data);
+        var rvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [0.2, 0.2, 0.2]);
+        var tvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [1., 1., 1]);
+
+        const success = cv.solvePnP(model_points, face_points, camera_matrix, dist_coefficients, rvec, tvec, true, 0)
+        cv.Rodrigues(rvec, rot)
         face.head_pose_rot = rot
         face.head_position = tvec
-        // face.reye.head_pose_rot = rot
-        // face.leye.head_pose_rot = rot
+        
         return face
     }
 

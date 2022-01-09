@@ -42,7 +42,7 @@ class HeadPoseNormalizer {
         let projection_matrix = math.multiply(math.multiply(normalized_camera_matrix, conversion_matrix), camera_matrix_inv)
         
         projection_matrix = new cv.matFromArray(projection_matrix._size[0], projection_matrix._size[1],
-                                                cv.CV_64FC1, projection_matrix,)
+                                                cv.CV_64FC1, projection_matrix._data.flat())
         
         cv.warpPerspective(image_mat, out_mat, projection_matrix, dsize)
         return out_mat
@@ -51,8 +51,8 @@ class HeadPoseNormalizer {
     _normalize_head_pose(eye_or_face){
         let head_pose_rot = math.reshape(math.matrix(Array.from(eye_or_face.head_pose_rot.data64F)),[3,3])
         let normalized_head_rot = math.dotMultiply(head_pose_rot, eye_or_face.normalizing_rot)
-        let normalized_head_rota_mat = new cv.matFromArray  (normalized_head_rot._size[0], normalized_head_rot._size[1],
-                                                            cv.CV_64FC1, normalized_head_rot)
+        let normalized_head_rota_mat = new cv.matFromArray(normalized_head_rot._size[0], normalized_head_rot._size[1],
+                                                            cv.CV_64FC1, normalized_head_rot._data.flat())
         var euler_angles2d = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
         cv.Rodrigues(normalized_head_rota_mat, euler_angles2d)
         euler_angles2d  = Array.from(euler_angles2d.data64F).slice(0,2)

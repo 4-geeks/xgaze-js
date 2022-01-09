@@ -32,8 +32,8 @@ faceMesh.setOptions({
 });
 faceMesh.onResults(onResults);
 async function Run(){
-    let imageSize = 480
-    const imageLoader = new ImageLoader(imageSize, imageSize);
+    let [imW, imH]= [640, 480]
+    const imageLoader = new ImageLoader(imW, imH);
     imageData = await imageLoader.getImageData('./test.jpg');
     await faceMesh.send({image: imageData})
 }
