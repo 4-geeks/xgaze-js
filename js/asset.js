@@ -63,7 +63,7 @@ class HeadPoseNormalizer {
     _compute_normalizing_rotation(center, head_rot){
         let z_axis = _normalize_vector(center)
         // head_rot = head_rot.as_matrix()
-        let head_x_axis = [head_rot.data64F[0],head_rot.data64F[1],head_rot.data64F[2]]
+        let head_x_axis = [head_rot.data64F[0],head_rot.data64F[3],head_rot.data64F[6]]
         let y_axis = _normalize_vector(math.cross(z_axis, head_x_axis))
         let x_axis = _normalize_vector(math.cross(y_axis, z_axis))
         return [x_axis, y_axis, z_axis] // Rotation.from_matrix(np.vstack([x_axis, y_axis, z_axis]))

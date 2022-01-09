@@ -123,21 +123,12 @@ class FaceModel:
         # face is in front of the camera.
         rvec = np.zeros(3, dtype=np.float)
         tvec = np.array([0, 0, 1], dtype=np.float)
-        wtvec = np.array([0, 0, 1], dtype=np.float)
-        _, _, tvec = cv2.solvePnP(self.LANDMARKS,
+        _, rvec, tvec = cv2.solvePnP(self.LANDMARKS,
                                      face.landmarks,
                                      camera.camera_matrix,
                                      camera.dist_coefficients,
                                      rvec,
                                      tvec,
-                                     useExtrinsicGuess=True,
-                                     flags=cv2.SOLVEPNP_ITERATIVE)
-        _, rvec, _ = cv2.solvePnP(self.LANDMARKS,
-                                     face.landmarks - face.landmarks[0] + np.array([[640//2,480//2]]),
-                                     camera.camera_matrix,
-                                     camera.dist_coefficients,
-                                     rvec,
-                                     wtvec,
                                      useExtrinsicGuess=True,
                                      flags=cv2.SOLVEPNP_ITERATIVE)
         rot = Rotation.from_rotvec(rvec)

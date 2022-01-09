@@ -119,13 +119,14 @@ class FaceModel {
     estimate_head_pose(face, camera){
         var rot = new cv.Mat({ width: 3, height: 3 }, cv.CV_64FC1);
 
-        var canonicalPoints = readJson("./canonical_face_points.json")["points"]
-        var model_points = new cv.Mat(468, 3, cv.CV_64FC1);
-        for(let i=0;i<468;i++){
-            model_points.doublePtr(i,0)[0] = canonicalPoints[i].x / 100;
-            model_points.doublePtr(i,1)[0] = canonicalPoints[i].y / 100;
-            model_points.doublePtr(i,2)[0] = canonicalPoints[i].z / 100;
-        }
+        // var canonicalPoints = readJson("./canonical_face_points.json")["points"]
+        // var model_points = new cv.Mat(468, 3, cv.CV_64FC1);
+        // for(let i=0;i<468;i++){
+        //     model_points.doublePtr(i,0)[0] = canonicalPoints[i].x / 100;
+        //     model_points.doublePtr(i,1)[0] = canonicalPoints[i].y / 100;
+        //     model_points.doublePtr(i,2)[0] = canonicalPoints[i].z / 100;
+        // }
+        var model_points = new cv.matFromArray(468, 3, cv.CV_64FC1, this.LANDMARKS.slice(0,468).flat());
         var face_points = new cv.matFromArray(468, 2, cv.CV_64FC1, face.landmarks.slice(0,468).flat());
         var camera_matrix = new cv.matFromArray(3, 3, cv.CV_64FC1, camera.camera_matrix.data);
         var dist_coefficients = new cv.matFromArray(1, 5, cv.CV_64FC1, camera.dist_coefficients.data);
@@ -144,7 +145,7 @@ class FaceModel {
         
         var rot = face.head_pose_rot //.as_matrix()
         var mat = math.matrix(Array.from(rot.data64F))
-        var rot_T = math.reshape(math.transpose(mat),[3,3])
+        var rot_T = math.transpose(math.reshape(mat,[3,3]))
         var mul = math.multiply(this.LANDMARKS, rot_T).toArray()
         for(let i=0;i<this.LANDMARKS.length;i++){
             mul[i] = math.add(mul[i], Array.from(face.head_position.data64F)) 
