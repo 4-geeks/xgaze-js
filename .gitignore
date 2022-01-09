@@ -12,6 +12,7 @@ __pycache__/
 *.jpg
 *.png
 *.json
+*.onnx
 */modules
 */dist
 
