@@ -1,6 +1,8 @@
+import os
 import cv2
 import timm
 import torch
+import urllib
 import numpy as np
 import torchvision.transforms as T
 from scipy.spatial.transform import Rotation
@@ -105,6 +107,10 @@ class GazeEstimator:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
         self.gaze_estimation_model = timm.create_model("resnet18", num_classes=2)
+        if not os.path.isfile(checkpoint_path):
+            g = urllib.request.urlopen('https://github.com/4-geeks/xgaze-js/releases/download/v0.0.1/eth-xgaze_resnet18.pth')
+            with open(checkpoint_path, 'b+w') as f:
+                f.write(g.read())
         checkpoint = torch.load(checkpoint_path,map_location='cpu')
         self.gaze_estimation_model.load_state_dict(checkpoint['model'])
         self.gaze_estimation_model.to(device)
