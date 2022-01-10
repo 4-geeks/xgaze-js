@@ -2,6 +2,8 @@ var imageData
 var canvasCtx
 var videoElement
 var canvasElement
+var gazeModel
+const backend = "wasm"
 const normalized_distance = 0.6
 const camera_params = "./sample_params.yaml"
 const normalized_camera_params  = "./eth-xgaze.yaml"
@@ -11,6 +13,7 @@ const face_model_3d = new FaceModelMediaPipe()
 const head_pose_normalizer = new HeadPoseNormalizer(main_camera, normalized_camera, normalized_distance)
 const jsonPath =  "dist/canonical_face_points.json"
 const image_size = new cv.Size(640,480);
+const gazeWeightsPath = "./eth-xgaze_resnet18.onnx"
 async function onResults(results) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -23,6 +26,8 @@ async function onResults(results) {
             face = face_model_3d.compute_3d_pose(face)
             face = face_model_3d.compute_face_eye_centers(face)
             face = head_pose_normalizer.normalize(imageData, face)
+            const gazeRes = await InferenceONNX(gazeModel, face.normalized_image.data, "input", 224, 224)
+            console.log("gazeRes",gazeRes)
             cv.imshow('cvCanvas',face.normalized_image)
         }
     }
@@ -42,6 +47,7 @@ faceMesh.setOptions({
 faceMesh.onResults(onResults);
 
 async function Run(){
+    gazeModel = await ort.InferenceSession.create(gazeWeightsPath,{executionProviders: [backend]});
     videoElement = document.getElementsByClassName('input_video')[0];
     canvasElement = document.getElementsByClassName('output_canvas')[0];
     canvasCtx = canvasElement.getContext('2d');

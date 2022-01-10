@@ -79,6 +79,24 @@ class HeadPoseNormalizer {
         ]
         
     }
-
-
 }
+
+async function InferenceONNX(model, data, input_key, w, h){
+    const dataFromImage = ndarray(new Float32Array(data), [w, h, 4]);
+    const dataProcessed = ndarray(new Float32Array(w * h * 3), [1, 3, w, h]);
+    ndarray.ops.divseq(dataFromImage, 255.0);
+    ndarray.ops.subseq(dataFromImage.pick(null, null, 0), 0.485);
+    ndarray.ops.subseq(dataFromImage.pick(null, null, 1), 0.456);
+    ndarray.ops.subseq(dataFromImage.pick(null, null, 2), 0.406);
+    ndarray.ops.divseq(dataFromImage.pick(null, null, 0), 0.229);
+    ndarray.ops.divseq(dataFromImage.pick(null, null, 1), 0.224);
+    ndarray.ops.divseq(dataFromImage.pick(null, null, 2), 0.225);
+    ndarray.ops.assign(dataProcessed.pick(0, 0, null, null), dataFromImage.pick(null, null, 0));
+    ndarray.ops.assign(dataProcessed.pick(0, 1, null, null), dataFromImage.pick(null, null, 1));
+    ndarray.ops.assign(dataProcessed.pick(0, 2, null, null), dataFromImage.pick(null, null, 2));
+    let input = dataProcessed.data
+    const tensor = new ort.Tensor('float32', input, [1, 3, w, h]);
+    const output = await model.run({[input_key]:tensor});
+    const res = output[Object.keys(output)[0]].data;
+    return res;
+  }
