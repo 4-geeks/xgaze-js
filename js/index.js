@@ -26,8 +26,9 @@ async function onResults(results) {
             face = face_model_3d.compute_3d_pose(face)
             face = face_model_3d.compute_face_eye_centers(face)
             face = head_pose_normalizer.normalize(imageData, face)
-            const gazeRes = await InferenceONNX(gazeModel, face.normalized_image.data, "input", 224, 224)
-            console.log("gazeRes",gazeRes)
+            face.normalized_gaze_angles = await InferenceONNX(gazeModel, face.normalized_image.data, "input", 224, 224)
+            face.angle_to_vector()
+            face.denormalize_gaze_vector()
             cv.imshow('cvCanvas',face.normalized_image)
         }
     }
