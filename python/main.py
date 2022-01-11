@@ -25,8 +25,9 @@ while True:
         estimator.estimate(face, frame)
         visualizer.draw_3d_line(face.center, face.center + 0.5 * face.gaze_vector)
 
-    frame = cv2.flip(frame,1)
-    cv2.imshow("frame",face.normalized_image)
+    # frame = cv2.flip(frame,1)
+    cv2.imshow("frame",frame)
+    cv2.imshow("face",face.normalized_image)
     k = cv2.waitKey(1)
     if k == ord('q'):
         break
