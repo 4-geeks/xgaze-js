@@ -46,7 +46,10 @@ class CameraObj {
     }
 
     project_points(points3d, rvec, tvec){
-        
+        let points2d, _ = cv2.projectPoints(points3d, rvec, tvec,
+                                        this.camera_matrix,
+                                        this.dist_coefficients)
+        return points2d
     }
 }
 
@@ -114,35 +117,33 @@ class FaceModel {
     NOSE_INDICES
     CHIN_INDEX
     NOSE_INDEX
-
+    constructor(){
+        this.rot =  new cv.Mat(3, 3, cv.CV_64FC1);
+        this.model_points = new cv.Mat(468, 3, cv.CV_64FC1)
+        this.face_points = new cv.Mat(468, 2, cv.CV_64FC1)
+        this.camera_matrix = new cv.Mat(3, 3, cv.CV_64FC1)
+        this.dist_coefficients = new cv.Mat(1, 5, cv.CV_64FC1)
+        this.rvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [0.2, 0.2, 0.2]);
+        this.tvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [1., 1., 1]);
+    }
     estimate_head_pose(face, camera){
-        var rot = new cv.Mat({ width: 3, height: 3 }, cv.CV_64FC1);
-
-        // var canonicalPoints = readJson("./canonical_face_points.json")["points"]
-        // var model_points = new cv.Mat(468, 3, cv.CV_64FC1);
-        // for(let i=0;i<468;i++){
-        //     model_points.doublePtr(i,0)[0] = canonicalPoints[i].x / 100;
-        //     model_points.doublePtr(i,1)[0] = canonicalPoints[i].y / 100;
-        //     model_points.doublePtr(i,2)[0] = canonicalPoints[i].z / 100;
-        // }
-        var model_points = new cv.matFromArray(468, 3, cv.CV_64FC1, this.LANDMARKS.slice(0,468).flat());
-        var face_points = new cv.matFromArray(468, 2, cv.CV_64FC1, face.landmarks.slice(0,468).flat());
-        var camera_matrix = new cv.matFromArray(3, 3, cv.CV_64FC1, camera.camera_matrix.data);
-        var dist_coefficients = new cv.matFromArray(1, 5, cv.CV_64FC1, camera.dist_coefficients.data);
-        var rvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [0.2, 0.2, 0.2]);
-        var tvec = new cv.matFromArray(1, 3, cv.CV_64FC1, [1., 1., 1]);
-
-        const success = cv.solvePnP(model_points, face_points, camera_matrix, dist_coefficients, rvec, tvec, true, 0)
-        cv.Rodrigues(rvec, rot)
-        face.head_pose_rot = rot
-        face.head_position = tvec
-        
+        this.model_points.data64F.set(this.LANDMARKS.slice(0,468).flat())
+        this.face_points.data64F.set(face.landmarks.slice(0,468).flat())
+        this.camera_matrix.data64F.set(camera.camera_matrix.data)
+        this.dist_coefficients.data64F.set(camera.dist_coefficients.data)
+        this.rvec.data64F.set([0.2, 0.2, 0.2])
+        this.rvec.data64F.set([1., 1., 1.])
+        const success = cv.solvePnP(this.model_points, this.face_points, this.camera_matrix,
+                                    this.dist_coefficients, this.rvec, this.tvec, true, 0)
+        cv.Rodrigues(this.rvec, this.rot)
+        face.head_pose_rot = this.rot
+        face.head_position = this.tvec
         return face
     }
 
     compute_3d_pose(face){
         
-        var rot = face.head_pose_rot //.as_matrix()
+        var rot = face.head_pose_rot
         var mat = math.matrix(Array.from(rot.data64F))
         var rot_T = math.transpose(math.reshape(mat,[3,3]))
         var mul = math.multiply(this.LANDMARKS, rot_T).toArray()

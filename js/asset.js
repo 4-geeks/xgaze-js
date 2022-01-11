@@ -17,6 +17,13 @@ class HeadPoseNormalizer {
         this.camera = camera
         this.normalized_camera = normalized_camera
         this.normalized_distance = normalized_distance
+        this.out_mat = new cv.Mat()
+        this.dsize = new cv.Size(this.normalized_camera.width, this.normalized_camera.height)
+        this.image_mat = new cv.Mat(this.camera.height, this.camera.width, cv.CV_8UC4);
+        this.projection_matrix = new cv.Mat(3, 3, cv.CV_64F);
+
+        this.euler_angles2d = new cv.Mat(1, 3, cv.CV_64F);
+        this.normalized_head_rot = new cv.Mat(3, 3, cv.CV_64F);
     }
 
     normalize(image, eye_or_face){
@@ -27,46 +34,38 @@ class HeadPoseNormalizer {
         return eye_or_face
     }
 
-    _normalize_image(image, eye_or_face){
-        var image_mat = new cv.Mat(image.height, image.width, cv.CV_8UC4);
-        image_mat.data.set(image.data)
-        var out_mat = new cv.Mat()
-        let dsize = new cv.Size(this.normalized_camera.width, this.normalized_camera.height)
+    _normalize_image(image, eye_or_face){ 
+        this.image_mat.data.set(image.data)
+
         let camera_matrix = math.reshape(math.matrix(this.camera.camera_matrix.data),[3,3])
         let camera_matrix_inv = math.inv(camera_matrix)
         let normalized_camera_matrix = math.reshape(math.matrix(this.normalized_camera.camera_matrix.data),[3,3])
-        
         let scale = this._get_scale_matrix(eye_or_face.distance)
-        let conversion_matrix = math.multiply(scale,eye_or_face.normalizing_rot) // eye_or_face.normalizing_rot.as_matrix()
-
+        let conversion_matrix = math.multiply(scale,eye_or_face.normalizing_rot)
         let projection_matrix = math.multiply(math.multiply(normalized_camera_matrix, conversion_matrix), camera_matrix_inv)
-        
-        projection_matrix = new cv.matFromArray(projection_matrix._size[0], projection_matrix._size[1],
-                                                cv.CV_64FC1, projection_matrix._data.flat())
-        
-        cv.warpPerspective(image_mat, out_mat, projection_matrix, dsize)
-        return out_mat
+
+        this.projection_matrix.data64F.set(projection_matrix._data.flat())
+
+        cv.warpPerspective(this.image_mat, this.out_mat, this.projection_matrix, this.dsize)
+        return this.out_mat
     }
 
     _normalize_head_pose(eye_or_face){
         let head_pose_rot = math.reshape(math.matrix(Array.from(eye_or_face.head_pose_rot.data64F)),[3,3])
         let normalized_head_rot = math.dotMultiply(head_pose_rot, eye_or_face.normalizing_rot)
-        let normalized_head_rota_mat = new cv.matFromArray(normalized_head_rot._size[0], normalized_head_rot._size[1],
-                                                            cv.CV_64FC1, normalized_head_rot._data.flat())
-        var euler_angles2d = new cv.Mat({ width: 3, height: 1 }, cv.CV_64FC1);
-        cv.Rodrigues(normalized_head_rota_mat, euler_angles2d)
-        euler_angles2d  = Array.from(euler_angles2d.data64F).slice(0,2)
+        this.normalized_head_rot.data64F.set(normalized_head_rot._data.flat())
+        cv.Rodrigues(this.normalized_head_rot, this.euler_angles2d)
+        let euler_angles2d  = Array.from(this.euler_angles2d.data64F).slice(0,2)
         let normalized_head_rot2d = math.dotMultiply(euler_angles2d, [1, -1])
         return normalized_head_rot2d
     }
 
     _compute_normalizing_rotation(center, head_rot){
         let z_axis = _normalize_vector(center)
-        // head_rot = head_rot.as_matrix()
         let head_x_axis = Array.from([head_rot.data64F[0],head_rot.data64F[3],head_rot.data64F[6]])
         let y_axis = _normalize_vector(math.cross(z_axis, head_x_axis))
         let x_axis = _normalize_vector(math.cross(y_axis, z_axis))
-        return [x_axis, y_axis, z_axis] // Rotation.from_matrix(np.vstack([x_axis, y_axis, z_axis]))
+        return [x_axis, y_axis, z_axis]
         
     }
 
