@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
 from visualizer import Visualizer
-from asset import detect_faces_mediapipe, GazeEstimator
+from asset import detect_faces_mediapipe, GazeEstimator, gaze2point
 
 checkpoint_path = "../data/eth-xgaze_resnet18.pth"
 camera_params = "../data/sample_params.yaml"
@@ -24,10 +24,14 @@ while True:
     for face in faces:
         estimator.estimate(face, frame)
         visualizer.draw_3d_line(face.center, face.center + 0.5 * face.gaze_vector)
-
-    # frame = cv2.flip(frame,1)
+    x,y = gaze2point(face.center, face.gaze_vector)
+    frame = cv2.flip(frame,1)
+    cv2.putText(frame,f"{face.normalized_gaze_angles[0]:0.3f},    {face.normalized_gaze_angles[1]:0.3f}",
+        (50,50),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,0),2)
+    cv2.putText(frame,f"{x},    {y}",
+        (50,150),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,0),2)
     cv2.imshow("frame",frame)
-    cv2.imshow("face",face.normalized_image)
+    cv2.imshow("face",cv2.flip(face.normalized_image,1))
     k = cv2.waitKey(1)
     if k == ord('q'):
         break

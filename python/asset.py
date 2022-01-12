@@ -8,6 +8,7 @@ import torchvision.transforms as T
 from scipy.spatial.transform import Rotation
 from face_cam import Face, Camera, FaceParts, FacePartsName, FaceModelMediaPipe, Camera
 
+from model import Model
 
 transform = T.Compose([
         T.Lambda(lambda x: cv2.resize(x, (224, 224))),
@@ -16,7 +17,15 @@ transform = T.Compose([
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224,
                                                      0.225]),  # RGB
     ])
-
+gazetr_transform = T.Compose([
+        T.Lambda(lambda x: cv2.resize(x, (224, 224))),
+        T.ToTensor()
+    ])
+gazetr_model = Model()
+state_dict = torch.load("GazeTR-H-ETH.pt",map_location="cuda")
+gazetr_model.cuda()
+gazetr_model.load_state_dict(state_dict)
+gazetr_model.eval()
 def detect_faces_mediapipe(detector, image: np.ndarray):
         h, w = image.shape[:2]
         predictions = detector.process(image[:, :, ::-1])
@@ -121,10 +130,28 @@ class GazeEstimator:
         self.face_model_3d.compute_3d_pose(face)
         self.face_model_3d.compute_face_eye_centers(face, 'ETH-XGaze')
         self.head_pose_normalizer.normalize(frame, face)
-        image = transform(face.normalized_image).unsqueeze(0)
+        # image = transform(face.normalized_image).unsqueeze(0)
+        # image = image.to(self.device)
+        # prediction = self.gaze_estimation_model(image)
+        # prediction = prediction.detach().cpu().numpy()
+        image = gazetr_transform(face.normalized_image).unsqueeze(0)
         image = image.to(self.device)
-        prediction = self.gaze_estimation_model(image)
-        prediction = prediction.detach().cpu().numpy()
+        prediction = gazetr_model({"face":image})
+        prediction = prediction.detach().cpu().numpy()[...,::-1]
         face.normalized_gaze_angles = prediction[0]
         face.angle_to_vector()
         face.denormalize_gaze_vector()   
+
+def gaze2point(center, gaze_vector):
+    """
+    x = gaze_vector[0] * t + center[0]
+    y = gaze_vector[1] * t + center[1]
+    z = gaze_vector[2] * t + center[2]
+
+    solve it for z=0 :
+    """
+    t = - center[2] / gaze_vector[2]
+    x = gaze_vector[0] * t + center[0]
+    y = gaze_vector[1] * t + center[1]
+    return [round(x*100,1),round(y*100,1)]
+    
