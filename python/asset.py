@@ -130,14 +130,14 @@ class GazeEstimator:
         self.face_model_3d.compute_3d_pose(face)
         self.face_model_3d.compute_face_eye_centers(face, 'ETH-XGaze')
         self.head_pose_normalizer.normalize(frame, face)
-        # image = transform(face.normalized_image).unsqueeze(0)
-        # image = image.to(self.device)
-        # prediction = self.gaze_estimation_model(image)
-        # prediction = prediction.detach().cpu().numpy()
-        image = gazetr_transform(face.normalized_image).unsqueeze(0)
+        image = transform(face.normalized_image).unsqueeze(0)
         image = image.to(self.device)
-        prediction = gazetr_model({"face":image})
-        prediction = prediction.detach().cpu().numpy()[...,::-1]
+        prediction = self.gaze_estimation_model(image)
+        prediction = prediction.detach().cpu().numpy()
+        # image = gazetr_transform(face.normalized_image).unsqueeze(0)
+        # image = image.to(self.device)
+        # prediction = gazetr_model({"face":image})
+        # prediction = prediction.detach().cpu().numpy()[...,::-1]
         face.normalized_gaze_angles = prediction[0]
         face.angle_to_vector()
         face.denormalize_gaze_vector()   
