@@ -17,15 +17,15 @@ transform = T.Compose([
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224,
                                                      0.225]),  # RGB
     ])
-gazetr_transform = T.Compose([
-        T.Lambda(lambda x: cv2.resize(x, (224, 224))),
-        T.ToTensor()
-    ])
-gazetr_model = Model()
-state_dict = torch.load("GazeTR-H-ETH.pt",map_location="cuda")
-gazetr_model.cuda()
-gazetr_model.load_state_dict(state_dict)
-gazetr_model.eval()
+# gazetr_transform = T.Compose([
+#         T.Lambda(lambda x: cv2.resize(x, (224, 224))),
+#         T.ToTensor()
+#     ])
+# gazetr_model = Model()
+# state_dict = torch.load("GazeTR-H-ETH.pt",map_location="cuda")
+# gazetr_model.cuda()
+# gazetr_model.load_state_dict(state_dict)
+# gazetr_model.eval()
 def detect_faces_mediapipe(detector, image: np.ndarray):
         h, w = image.shape[:2]
         predictions = detector.process(image[:, :, ::-1])
@@ -154,4 +154,18 @@ def gaze2point(center, gaze_vector):
     x = gaze_vector[0] * t + center[0]
     y = gaze_vector[1] * t + center[1]
     return [round(x*100,1),round(y*100,1)]
-    
+
+def px2mm(coords, width=1920,   height=1080,
+                      width_mm=344, height_mm=194):
+        x = (coords[0] / width) * width_mm
+        x = - x + width_mm / 2
+        y = (coords[1] / height) * height_mm
+        return (x,y)
+
+def mm2px(point, width=1920,   height=1080,
+                 width_mm=344, height_mm=194):
+    x,y = point
+    x = - x + width_mm / 2
+    x = (x / width_mm) * width
+    y = (y / height_mm) * height
+    return round(x),round(y)
