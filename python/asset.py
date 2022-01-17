@@ -153,7 +153,7 @@ def gaze2point(center, gaze_vector):
     t = - center[2] / gaze_vector[2]
     x = gaze_vector[0] * t + center[0]
     y = gaze_vector[1] * t + center[1]
-    return [round(x*100,1),round(y*100,1)]
+    return x,y
 
 def px2mm(coords, width=1920,   height=1080,
                       width_mm=344, height_mm=194):
