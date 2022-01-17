@@ -45,7 +45,7 @@ class GazeDataset(Dataset):
         sample = {'im_tensor': im_tensor, 'pitch_yaw': torch.tensor(pitch_yaw)}
         return sample
 
-gaze_dataset = GazeDataset("mpiifaces/", transform)
+gaze_dataset = GazeDataset(cfg.data_root, transform)
 test_ratio = 0.25
 bs = cfg.bs
 lr = cfg.lr
