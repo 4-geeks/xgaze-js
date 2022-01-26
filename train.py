@@ -110,5 +110,5 @@ if __name__ == "__main__":
                 test_bar.set_description(f"avg_test_loss {np.mean(test_loss).item():.3f}" )
                 writer.add_scalar('Loss/test', np.mean(test_loss).item(), e)
 
-torch.save({"model":net.state_dict()},checkpoint_path)
+        torch.save({"model":net.state_dict()},checkpoint_path)
     
