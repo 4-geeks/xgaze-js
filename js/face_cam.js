@@ -81,7 +81,7 @@ class FaceParts {
     }
 
     denormalize_gaze_vector(){
-        this.gaze_vector = this.normalized_gaze_vector * this.normalizing_rot
+        this.gaze_vector = math.multiply(this.normalized_gaze_vector, this.normalizing_rot)
     }
 
     vector_to_angle(vector){

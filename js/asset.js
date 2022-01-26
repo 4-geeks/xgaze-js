@@ -99,3 +99,30 @@ async function InferenceONNX(model, data, input_key, w, h){
     const res = output[Object.keys(output)[0]].data;
     return res;
   }
+
+function gaze2point(center, gaze_vector) {
+    const t = - center[2] / gaze_vector[2]
+    const x = gaze_vector[0] * t + center[0]
+    const y = gaze_vector[1] * t + center[1]
+    return [x, y]
+}
+
+function px2mm(coords, width = 1920, height = 1080,
+    width_mm = 344, height_mm = 194) {
+    let x = (coords[0] / width) * width_mm
+    x = - x + width_mm / 2
+    let y = (coords[1] / height) * height_mm
+    return [x, y]
+
+}
+
+function mm2px(point, width = 1920, height = 1080,
+    width_mm = 344, height_mm = 194) {
+    let [x, y] = point
+    console.log("x,y",point)
+    x = - x + width_mm / 2
+    x = (x / width_mm) * width
+    y = (y / height_mm) * height
+    return [Math.round(x), Math.round(y)]
+}
+    

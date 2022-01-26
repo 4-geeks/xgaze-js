@@ -15,7 +15,7 @@ cv['onRuntimeInitialized']=()=>{
     const head_pose_normalizer = new HeadPoseNormalizer(main_camera, normalized_camera, normalized_distance)
     const jsonPath =  "dist/canonical_face_points.json"
 
-    const gazeWeightsPath = "./eth-xgaze_resnet18.onnx"
+    const gazeWeightsPath = "./finetuned_eth-xgaze_resnet18.onnx"
     async function onResults(results) {
         canvasCtx.save();
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -31,6 +31,9 @@ cv['onRuntimeInitialized']=()=>{
                 face.normalized_gaze_angles = await InferenceONNX(gazeModel, face.normalized_image.data, "input", 224, 224)
                 face.angle_to_vector()
                 face.denormalize_gaze_vector()
+                const [xmm, ymm] = gaze2point(face.center.map(x => x * 1e3), face.gaze_vector)
+                const [xpx, ypx] = mm2px([xmm, ymm])
+                console.log("x,y", xpx, ypx)
                 cv.imshow('cvCanvas',face.normalized_image)
             }
         }
