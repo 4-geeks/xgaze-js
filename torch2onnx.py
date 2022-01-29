@@ -13,7 +13,7 @@ transform = T.Compose([
                                                      0.225]),  # RGB
     ])
 
-checkpoint_path = "./data/eth-xgaze_resnet18.pth"
+checkpoint_path = "./data/finetuned_eth-xgaze_resnet18.pth"
 onnx_path = checkpoint_path.replace("pth","onnx")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 gaze_estimation_model = timm.create_model("resnet18", num_classes=2)
