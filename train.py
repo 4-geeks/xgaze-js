@@ -14,12 +14,14 @@ from torch.utils.tensorboard import SummaryWriter
 from config import Config
 cfg = Config()
 transform = T.Compose([
-        T.Lambda(lambda x: cv2.resize(x, (224, 224))),
-        T.Lambda(lambda x: x[:, :, ::-1].copy()),  # BGR -> RGB
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224,
-                                                     0.225]),  # RGB
-    ])
+    T.Lambda(lambda x: cv2.resize(x, (224, 224))),
+    T.Lambda(lambda x: x[:, :, ::-1].copy()),  # BGR -> RGB
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224,
+                                                 0.225]),  # RGB
+])
+
+
 class GazeDataset(Dataset):
     """Gaze Dataset."""
 
@@ -29,8 +31,9 @@ class GazeDataset(Dataset):
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
         """
-        self.images_list = glob(os.path.join(root_dir,"*.jpg"))
+        self.images_list = glob(os.path.join(root_dir, "*.jpg"))
         self.transform = transform
+
     def __len__(self):
         return len(self.images_list)
 
@@ -45,40 +48,57 @@ class GazeDataset(Dataset):
         sample = {'im_tensor': im_tensor, 'pitch_yaw': torch.tensor(pitch_yaw)}
         return sample
 
+
 gaze_dataset = GazeDataset(cfg.data_root, transform)
 test_ratio = 0.25
 bs = cfg.bs
 lr = cfg.lr
 test_len = int(len(gaze_dataset) * test_ratio)
 train_subset, test_subset = torch.utils.data.random_split(
-        gaze_dataset, [len(gaze_dataset)-test_len, test_len], generator=torch.Generator().manual_seed(1))
-train_loader = DataLoader(train_subset, batch_size=bs, shuffle=True, num_workers=0)
-test_loader = DataLoader(test_subset, batch_size=bs, shuffle=True, num_workers=0)
+    gaze_dataset, [len(gaze_dataset)-test_len, test_len], generator=torch.Generator().manual_seed(1))
+train_loader = DataLoader(train_subset, batch_size=bs,
+                          shuffle=True, num_workers=0)
+test_loader = DataLoader(test_subset, batch_size=bs,
+                         shuffle=True, num_workers=0)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 checkpoint_path = cfg.checkpoint_path
 resume_path = cfg.resume_path
+personalized_path = cfg.personalized_path
 
-net = timm.create_model("resnet18", num_classes=2)
-if checkpoint_path is not None and not os.path.isfile(checkpoint_path):
-    checkpoint = torch.load(checkpoint_path, map_location='cpu')
-elif resume_path is not None:
-    if not os.path.isfile(resume_path):
-        g = urllib.request.urlopen('https://github.com/4-geeks/xgaze-js/releases/download/v0.0.1/eth-xgaze_resnet18.pth')
-        with open(resume_path, 'b+w') as f:
-            f.write(g.read())
-    checkpoint = torch.load(resume_path, map_location='cpu')
-net.load_state_dict(checkpoint['model'])
+net = timm.create_model(
+    cfg.model_name, pretrained=cfg.pretrained, num_classes=2)
+try:
+    if checkpoint_path is not None and not os.path.isfile(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+    elif resume_path is not None:
+        if not os.path.isfile(resume_path):
+            g = urllib.request.urlopen(
+                'https://github.com/4-geeks/xgaze-js/releases/download/v0.0.1/eth-xgaze_resnet18.pth')
+            with open(resume_path, 'b+w') as f:
+                f.write(g.read())
+        checkpoint = torch.load(resume_path, map_location=device)
+    net.load_state_dict(checkpoint['model'])
+except:
+    print("model loading failed.")
+    if cfg.personalize:
+        raise Exception(
+            "Personalization can not be done without a pretrained model")
 net.to(device)
 if __name__ == "__main__":
     itr = 0
     writer = SummaryWriter()
     epochs = cfg.epochs
     criterion = nn.L1Loss()
-    #optimizer = optim.Adam([#{'params':net.layer3.parameters()},
-    #                        {'params':net.layer4.parameters()},
-    #                        {'params':net.fc.parameters()}], lr=0.0000001)#, momentum=0.9)
-    optimizer = optim.Adam(net.parameters(),lr=lr)
+    if cfg.personalize:
+        for name, param in net.named_parameters():
+            if not name.startswith(('fc',"layer4")):
+                param.requires_grad = False
+        optimizer = optim.Adam([  # {'params':net.layer3.parameters()},
+            {'params':net.layer4.parameters()},
+            {'params': net.fc.parameters()}], lr=lr)  # , momentum=0.9)
+    else:
+        optimizer = optim.Adam(net.parameters(), lr=lr)
     for e in range(epochs):
         print(f"------- epoch-{e}/{epochs} -------")
         train_loss = []
@@ -90,13 +110,14 @@ if __name__ == "__main__":
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
-            nn.utils.clip_grad_norm_(net.parameters(),cfg.max_norm)
+            nn.utils.clip_grad_norm_(net.parameters(), cfg.max_norm)
             optimizer.step()
             train_loss.append(loss.item())
-            train_bar.set_description(f"avg_train_loss {np.mean(train_loss).item():.3f}" )
+            train_bar.set_description(
+                f"avg_train_loss {np.mean(train_loss).item():.3f}")
             writer.add_scalar('Loss/train', loss.item(), itr)
-            itr+=1
-    
+            itr += 1
+
         test_loss = []
         test_bar = tqdm(test_loader)
         net.eval()
@@ -107,8 +128,24 @@ if __name__ == "__main__":
                 outputs = net(inputs)
                 loss = criterion(outputs, labels)
                 test_loss.append(loss.item())
-                test_bar.set_description(f"avg_test_loss {np.mean(test_loss).item():.3f}" )
+                test_bar.set_description(
+                    f"avg_test_loss {np.mean(test_loss).item():.3f}")
                 writer.add_scalar('Loss/test', np.mean(test_loss).item(), e)
+        if cfg.personalize:
+            torch.save({"model": net.state_dict()}, personalized_path)
+        else:
+            torch.save({"model": net.state_dict()}, checkpoint_path)
 
-        torch.save({"model":net.state_dict()},checkpoint_path)
-    
+    net.load_state_dict(torch.load(
+        checkpoint_path, map_location=device)['model'])
+    test_bar = tqdm(test_loader)
+    with torch.no_grad():
+        for batch in test_bar:
+            inputs = batch["im_tensor"].to(device)
+            labels = batch["pitch_yaw"].to(device)
+            outputs = net(inputs)
+            loss = criterion(outputs, labels)
+            test_loss.append(loss.item())
+            test_bar.set_description(
+                f"avg_test_loss {np.mean(test_loss).item():.3f}")
+            writer.add_scalar('Loss/test', np.mean(test_loss).item(), e)

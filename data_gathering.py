@@ -1,7 +1,8 @@
 import os
 base_dir = os.path.dirname(os.path.realpath(__file__))
 data_folder = os.path.join(base_dir,'data')
-os.makedirs(data_folder,exist_ok=True)
+frame_folder = os.path.join(data_folder,'frames')
+os.makedirs(frame_folder,exist_ok=True)
 import cv2
 import numpy as np
 from glob import glob
@@ -43,7 +44,7 @@ if data_gathering :
         if  k == ord("q"):
             break
         elif k == ord("s"):
-            save_sample(image, coords, data_folder)
+            save_sample(image, coords, frame_folder)
             # boom, coords = random_marker(mH,mW)#
         elif k == ord("n"):
             boom, coords = random_marker(mH,mW)
@@ -58,13 +59,14 @@ else:
         x = - x + width_mm / 2
         y = (coords[1] / height) * height_mm
         return (x,y)
-
-    checkpoint_path = "../data/eth-xgaze_resnet18.pth"
-    camera_params = "../data/sample_params.yaml"
-    normalized_camera_params  = "../data/eth-xgaze.yaml"
+    out_dir = os.path.join(data_folder,"faces")
+    os.makedirs(out_dir,exist_ok=True)
+    checkpoint_path = os.path.join(data_folder,"eth-xgaze_resnet18.pth")
+    camera_params = os.path.join(data_folder,"sample_params.yaml")
+    normalized_camera_params  = os.path.join(data_folder,"eth-xgaze.yaml")
     estimator = GazeEstimator(checkpoint_path, camera_params, normalized_camera_params)
     detector = mp.solutions.face_mesh.FaceMesh(max_num_faces=1,static_image_mode=True)
-    images_list = glob(os.path.join(data_folder,"*.png"))
+    images_list = glob(os.path.join(data_folder,frame_folder,"*.png"))
     for im_path in images_list:
         im_name = os.path.splitext(os.path.basename(im_path))[0]
         im_name = im_name.split("(")[0]
@@ -104,4 +106,4 @@ else:
         print("pitch,yaw:",-np.round(gaze_norm_2d,2).tolist()[1])
         print("coords:",np.round(px2cm(coords),2).tolist()[0])
         print("===========")
-        cv2.imwrite(f"faces/face_{im_name}_{str(tuple(gaze_norm_2d.tolist()))}.jpg",face.normalized_image)
+        cv2.imwrite(f"{out_dir}/face_{im_name}_{str(tuple(gaze_norm_2d.tolist()))}.jpg",face.normalized_image)

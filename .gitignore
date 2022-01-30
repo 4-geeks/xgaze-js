@@ -15,7 +15,7 @@ __pycache__/
 *.onnx
 */modules
 */dist
-
+runs/
 
 # C extensions
 *.so
