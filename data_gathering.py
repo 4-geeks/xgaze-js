@@ -27,7 +27,7 @@ def get_date():
 def save_sample(image, coords, data_folder):
     uniqueId = get_date()
     sample_name = f"{uniqueId}_{coords}".replace(" ","")
-    cv2.imwrite(os.path.join(data_folder,sample_name+".png"),image)
+    cv2.imwrite(os.path.join(data_folder,sample_name+".jpg"),image)
 data_gathering = False
 if data_gathering :    
     mH, mW = primary_monitor_hw()
