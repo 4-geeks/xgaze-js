@@ -16,6 +16,7 @@ __pycache__/
 */modules
 */dist
 runs/
+data/
 
 # C extensions
 *.so
