@@ -88,10 +88,8 @@ else:
         right /= np.linalg.norm(right)
         R = np.c_[right, down, forward].T  # rotation matrix R
         gc = np.array(list(px2cm(coords))+[0])
-        gc_normalized = gc - face.center * 1000
-        print("before_gc_normalized:",gc_normalized)
+        gc_normalized = gc - face.center * 1e3
         gc_normalized = np.dot(R, gc_normalized)
-        print("after_gc_normalized:",gc_normalized @ R)
         gc_normalized = gc_normalized / np.linalg.norm(gc_normalized)
         gaze_theta = np.arcsin((-1) * gc_normalized[1])
         gaze_phi = np.arctan2((-1) * gc_normalized[0], (-1) * gc_normalized[2])
