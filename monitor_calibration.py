@@ -136,8 +136,10 @@ if __name__ == "__main__":
         from scipy.spatial.transform import Rotation as R
         from sklearn.metrics import mean_squared_error
         from scipy.optimize import minimize, least_squares
-
-        def fit(x, dataset, sorted_keys):
+        from skopt import gp_minimize
+        from time import time
+        def fit(x):
+            t1 = time()
             r = R.from_rotvec(x[:3])
             t = np.array(x[3:])
             new_corners = corners_3d @ r.as_matrix() + t
@@ -150,8 +152,16 @@ if __name__ == "__main__":
                     intersect = np.array(
                         list(map(float, plane.intersection(aRay)[0].coordinates)))
                     error += np.linalg.norm(np.abs(intersect - aCorner))
-            print("error:",error)
+            t2 = time()
+            print("error:",error,"time:",t2-t1)
             return error
         x0 = np.array([0.0001, 0.0001, 0.0001, -0.1, 0.1, 0.0001])
         sorted_keys = sorted(list(dataset.keys()),key=lambda x: eval(x))
-        res = least_squares(fit, x0, args=(dataset,sorted_keys))
+        # res = least_squares(fit, x0, args=(dataset,sorted_keys))
+        res = gp_minimize(fit,                  # the function to minimize
+                  [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x
+                  acq_func="EI",      # the acquisition function
+                  n_calls=128,         # the number of evaluations of f
+                  n_initial_points=128,  # the number of random initialization points
+                  noise=0.1**2,       # the noise level (optional)
+                  random_state=1234)   # the random seed
