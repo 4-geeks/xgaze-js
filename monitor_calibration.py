@@ -133,7 +133,7 @@ if __name__ == "__main__":
         with open("dataset.pkl","wb") as f:
             pickle.dump(dataset,f)
         fig = plt.figure(figsize=(10,10))
-        ax = fig.gca(projection='3d')
+        ax = plt.axes(projection='3d')
         for ky in ["50,50","960,540"]:#rays_3d.keys():
             for pt3d1,pt3d2 in rays_3d[ky]:
                 pt3d2 = pt3d2 * 1e4 + pt3d1 
@@ -181,14 +181,26 @@ if __name__ == "__main__":
             return error
         x0 = np.array([0.0001, 0.0001, 0.0001, -0.1, 0.1, 0.0001])
         sorted_keys = sorted(list(dataset.keys()),key=lambda x: eval(x))
-        # res = minimize(fit, x0)
+        res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.001})
         # res = least_squares(fit, x0, 
         #     #args=(dataset,sorted_keys)
         #     )
-        res = gp_minimize(fit,                  # the function to minimize
-                  [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x
-                  acq_func="EI",      # the acquisition function
-                  n_calls=1024,         # the number of evaluations of f
-                  n_initial_points=1024,  # the number of random initialization points
-                  noise=0.5,       # the noise level (optional)
-                  random_state=1234)   # the random seed
+        # res = gp_minimize(fit,                  # the function to minimize
+        #           [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x
+        #           acq_func="EI",      # the acquisition function
+        #           n_calls=1024,         # the number of evaluations of f
+        #           n_initial_points=1024,  # the number of random initialization points
+        #           noise=0.5,       # the noise level (optional)
+        #           random_state=1234)   # the random seed
+        r = R.from_rotvec(res.x[:3])
+        t = np.array(res.x[3:])
+        new_corners = corners_3d @ r.as_matrix() + t
+        fig = plt.figure(figsize=(10,10))
+        ax = plt.axes(projection='3d')
+        for ky in rays_3d.keys():
+            for pt3d1,pt3d2 in rays_3d[ky]:
+                pt3d2 = pt3d2 * 1000 + pt3d1 
+                ax.plot([pt3d1[0],pt3d2[0]], [pt3d1[1],pt3d2[1]], [pt3d1[2],pt3d2[2]], label='parametric curve')
+                ax.scatter(pt3d1[0],pt3d1[1],pt3d1[2])
+        ax.scatter(new_corners[:,0],new_corners[:,1],new_corners[:,2])
+        plt.show()
