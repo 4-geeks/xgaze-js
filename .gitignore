@@ -13,6 +13,7 @@ __pycache__/
 *.png
 *.json
 *.onnx
+*.pkl
 */modules
 */dist
 runs/
