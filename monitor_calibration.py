@@ -6,15 +6,18 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from screeninfo import get_monitors
-
+def plucker_intersection(line_point, line_dir, plane_normal_vector):
+    pa = np.append(line_point, 1).reshape(1, -1)
+    dr = np.append(line_dir, 0).reshape(1, -1)
+    pln = np.append(plane_normal_vector, 0).reshape(1, -1)
+    res = dr * (pa @ pln.T) - pa * (dr @ pln.T)
+    res = res[0]
+    res = res/res[-1]
+    return res[:3]
 base_dir = os.path.dirname(os.path.realpath(__file__))
 data_folder = os.path.join(base_dir, 'data')
 frame_folder = os.path.join(data_folder, 'monitor_calib_frames')
 os.makedirs(frame_folder, exist_ok=True)
-cv2.namedWindow("boom", cv2.WND_PROP_FULLSCREEN)
-# cv2.moveWindow("boom", 1920,0)
-cv2.setWindowProperty("boom", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-
 
 def primary_monitor_hw():
     main_monitor = [m for m in get_monitors() if m.is_primary][0]
@@ -57,6 +60,10 @@ data_gathering = False
 monitors = get_monitors()
 if __name__ == "__main__":
     if data_gathering:
+        cv2.namedWindow("boom", cv2.WND_PROP_FULLSCREEN)
+        # cv2.moveWindow("boom", 1920,0)
+        cv2.setWindowProperty("boom", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
         for monitor in monitors:
             mW = monitor.width
             width_mm = monitor.width_mm
@@ -107,6 +114,7 @@ if __name__ == "__main__":
             max_num_faces=1, static_image_mode=True)
         images_list = glob(os.path.join(data_folder, frame_folder, "*.jpg"))
         dataset = {}
+        rays_3d = {}
         for im_path in images_list:
             im_name = os.path.splitext(os.path.basename(im_path))[0]
             im_name = im_name.split("(")[0]
@@ -119,8 +127,20 @@ if __name__ == "__main__":
             estimator.estimate(face, frame)
             aRay = Line3D(Point3D(face.center * 1e3),
                           Point3D(face.gaze_vector))
-
+            rays_3d[str_coords] = rays_3d.get(str_coords, []) + [[face.center * 1e3,face.gaze_vector]]
             dataset[str_coords] = dataset.get(str_coords, []) + [aRay]
+        import pickle
+        with open("dataset.pkl","wb") as f:
+            pickle.dump(dataset,f)
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.gca(projection='3d')
+        for ky in ["50,50","960,540"]:#rays_3d.keys():
+            for pt3d1,pt3d2 in rays_3d[ky]:
+                pt3d2 = pt3d2 * 1e4 + pt3d1 
+                ax.plot([pt3d1[0],pt3d2[0]], [pt3d1[1],pt3d2[1]], [pt3d1[2],pt3d2[2]], label='parametric curve')
+                ax.scatter(pt3d1[0],pt3d1[1],pt3d1[2])
+
+        plt.show()
 
         monitor = monitors[0]
         mW = monitor.width
@@ -145,23 +165,30 @@ if __name__ == "__main__":
             new_corners = corners_3d @ r.as_matrix() + t
             p1, p2, p3 = new_corners[0], new_corners[2], new_corners[4]
             plane = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
+            normal_vector = np.array(list(map(float, plane.normal_vector)))
             error = 0
             for srt_key, aCorner in zip(sorted_keys,new_corners):
                 rays = dataset[srt_key]
                 for aRay in rays:
-                    intersect = np.array(
-                        list(map(float, plane.intersection(aRay)[0].coordinates)))
+                    # intersect = np.array(
+                    #     list(map(float, plane.intersection(aRay)[0].coordinates)))
+                    apt = (list(map(float, (aRay.points[0].coordinates))))
+                    ldir = list(map(float,(aRay.direction_ratio)))
+                    intersect = plucker_intersection(apt,ldir,normal_vector)
                     error += np.linalg.norm(np.abs(intersect - aCorner))
             t2 = time()
             print("error:",error,"time:",t2-t1)
             return error
         x0 = np.array([0.0001, 0.0001, 0.0001, -0.1, 0.1, 0.0001])
         sorted_keys = sorted(list(dataset.keys()),key=lambda x: eval(x))
-        # res = least_squares(fit, x0, args=(dataset,sorted_keys))
+        # res = minimize(fit, x0)
+        # res = least_squares(fit, x0, 
+        #     #args=(dataset,sorted_keys)
+        #     )
         res = gp_minimize(fit,                  # the function to minimize
                   [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x
                   acq_func="EI",      # the acquisition function
-                  n_calls=128,         # the number of evaluations of f
-                  n_initial_points=128,  # the number of random initialization points
-                  noise=0.1**2,       # the noise level (optional)
+                  n_calls=1024,         # the number of evaluations of f
+                  n_initial_points=1024,  # the number of random initialization points
+                  noise=0.5,       # the noise level (optional)
                   random_state=1234)   # the random seed
