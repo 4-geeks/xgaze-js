@@ -104,7 +104,7 @@ class HeadPoseNormalizer:
 
 
 class GazeEstimator:
-    def __init__(self, checkpoint_path:str, camera_params: str, normalized_camera_params: str,
+    def __init__(self, checkpoint_path:str, camera_params: str, normalized_camera_params: str, model_name :str = "resnet18",
                  normalized_distance: float =0.6, device: str = None):
         camera = Camera(camera_params)
         normalized_camera = Camera(normalized_camera_params)
@@ -115,13 +115,17 @@ class GazeEstimator:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
-        self.gaze_estimation_model = timm.create_model("resnet18", num_classes=2)
-        if not os.path.isfile(checkpoint_path):
-            g = urllib.request.urlopen('https://github.com/4-geeks/xgaze-js/releases/download/v0.0.1/eth-xgaze_resnet18.pth')
-            with open(checkpoint_path, 'b+w') as f:
-                f.write(g.read())
-        checkpoint = torch.load(checkpoint_path,map_location='cpu')
-        self.gaze_estimation_model.load_state_dict(checkpoint['model'])
+        self.gaze_estimation_model = timm.create_model(model_name, num_classes=2)
+        try:
+            if not os.path.isfile(checkpoint_path):
+                g = urllib.request.urlopen('https://github.com/4-geeks/xgaze-js/releases/download/v0.0.1/eth-xgaze_resnet18.pth')
+                with open(checkpoint_path, 'b+w') as f:
+                    f.write(g.read())
+            checkpoint = torch.load(checkpoint_path,map_location='cpu')
+            self.gaze_estimation_model.load_state_dict(checkpoint['model'])
+            print("model successfully loaded.")
+        except:
+            print("model loading failed.")
         self.gaze_estimation_model.to(device)
         self.gaze_estimation_model.eval()
 

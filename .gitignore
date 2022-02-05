@@ -8,6 +8,7 @@ __pycache__/
 *.pt
 *.h5
 *.zip
+*.pkl
 *.yaml
 *.jpg
 *.png

@@ -11,7 +11,7 @@ checkpoint_path = "../data/finetuned_eth-xgaze_resnet18.pth"
 camera_params = "../data/sample_params.yaml"
 normalized_camera_params  = "../data/eth-xgaze.yaml"
 
-estimator = GazeEstimator(checkpoint_path, camera_params, normalized_camera_params)
+estimator = GazeEstimator(checkpoint_path, camera_params, normalized_camera_params, model_name="resnet18")
 visualizer = Visualizer(estimator.camera, estimator.face_model_3d.NOSE_INDEX)
 detector = mp.solutions.face_mesh.FaceMesh(max_num_faces=1)
 
