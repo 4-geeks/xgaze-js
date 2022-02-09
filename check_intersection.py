@@ -3,6 +3,14 @@ from time import time
 from sympy import Plane, Point3D, Line3D, Matrix
 import pickle
 
+def intersection(line_point, direction, plane_point, normal_vector):
+        C = np.dot(normal_vector, plane_point)
+        t = C - np.dot(normal_vector, line_point)
+        t = t / np.dot(normal_vector, direction)
+        x0 = dr[0] * t  + p1[0]
+        y0 = dr[1] * t  + p1[1]
+        z0 = dr[2] * t  + p1[2]
+        return np.array([x0, y0, z0])
 
 def plucker_intersection(line_point, line_dir, plane_point, plane_normal_vector):
     pa = np.append(line_point, 1).reshape(1, -1)
@@ -53,13 +61,17 @@ if __name__ == "__main__":
     direction = p2 - p1
     plane_point = pp
     normal_vector = pd
-    res = plucker_intersection(line_point, direction,
+    t1 = time()
+    for _ in range(100):
+        res = plucker_intersection(line_point, direction,
+                                    plane_point, normal_vector)
+    t2 = time()
+    print(t2-t1)
+    t1 = time()
+    for _ in range(100):
+        res = intersection(line_point, direction,
                                 plane_point, normal_vector)
-    C = np.dot(pd, pp)
-    t = C - np.dot(pd, p1)
-    t = t / np.dot(pd, dr)
-    print(t)
-    x0 = dr[0] * t  + p1[0]
-    y0 = dr[1] * t  + p1[1]
-    z0 = dr[2] * t  + p1[2]
-    print(x0,y0,z0)
+    t2 = time()
+    print(t2-t1)
+    
+        
