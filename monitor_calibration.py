@@ -15,6 +15,14 @@ def plucker_intersection(line_point, line_dir, plane_point, plane_normal_vector)
     res = res[0]
     res = res/res[-1]
     return res[:3]
+def intersection(line_point, direction, plane_point, normal_vector):
+        C = np.dot(normal_vector, plane_point)
+        t = C - np.dot(normal_vector, line_point)
+        t = t / np.dot(normal_vector, direction)
+        x0 = direction[0] * t  + line_point[0]
+        y0 = direction[1] * t  + line_point[1]
+        z0 = direction[2] * t  + line_point[2]
+        return np.array([x0, y0, z0])
 base_dir = os.path.dirname(os.path.realpath(__file__))
 data_folder = os.path.join(base_dir, 'data')
 frame_folder = os.path.join(data_folder, 'monitor_calib_frames')
@@ -178,21 +186,21 @@ if __name__ == "__main__":
                     #     list(map(float, plane.intersection(aRay)[0].coordinates)))
                     apt = (list(map(float, (aRay.points[0].coordinates))))
                     ldir = list(map(float,(aRay.direction_ratio)))
-                    intersect = plucker_intersection(apt,ldir,plane_point,normal_vector)
-                    print("r:",r)
-                    print("t:",t)
-                    print("aray:\n",aRay)
-                    print("plane:\n",plane)
-                    print(intersect)
-                    print(list(map(float,plane.intersection(aRay)[0].coordinates)))
-                    print("======")
+                    intersect = intersection(apt,ldir,plane_point,normal_vector)
+                    # print("r:",r)
+                    # print("t:",t)
+                    # print("aray:\n",aRay)
+                    # print("plane:\n",plane)
+                    # print(intersect)
+                    # print(list(map(float,plane.intersection(aRay)[0].coordinates)))
+                    # print("======")
                     error += np.linalg.norm(np.abs(intersect - aCorner))
             t2 = time()
             print("error:",error,"time:",t2-t1)
             return error
-        x0 = np.array([0.0001, 0.0001, 0.0001, -0.1, 0.1, 0.0001])
+        x0 = np.array([0.5, 0.5, 0.5, -0.1, 0.1, 0.0001])
         sorted_keys = sorted(list(dataset.keys()),key=lambda x: eval(x))
-        res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.00001},) #bounds=[(-500, 500),(-500, 500)])
+        res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.0000001},) #bounds=[(-500, 500),(-500, 500)])
         # res = least_squares(fit, x0,)
         # res = gp_minimize(fit,                  # the function to minimize
         #           [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x

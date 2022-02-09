@@ -7,9 +7,9 @@ def intersection(line_point, direction, plane_point, normal_vector):
         C = np.dot(normal_vector, plane_point)
         t = C - np.dot(normal_vector, line_point)
         t = t / np.dot(normal_vector, direction)
-        x0 = dr[0] * t  + p1[0]
-        y0 = dr[1] * t  + p1[1]
-        z0 = dr[2] * t  + p1[2]
+        x0 = direction[0] * t  + line_point[0]
+        y0 = direction[1] * t  + line_point[1]
+        z0 = direction[2] * t  + line_point[2]
         return np.array([x0, y0, z0])
 
 def plucker_intersection(line_point, line_dir, plane_point, plane_normal_vector):
