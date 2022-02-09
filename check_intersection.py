@@ -43,6 +43,7 @@ if __name__ == "__main__":
     print(np.round(sym_res, 3))
     print("====")
 
+    # 
     dr = np.array(list(map(float, sym_line.direction_ratio)))
     p1 = np.array(list(map(float, sym_line.p1.coordinates)))
     p2 = np.array(list(map(float, sym_line.p2.coordinates)))
@@ -62,4 +63,3 @@ if __name__ == "__main__":
     y0 = dr[1] * t  + p1[1]
     z0 = dr[2] * t  + p1[2]
     print(x0,y0,z0)
-    
