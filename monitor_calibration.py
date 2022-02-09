@@ -6,10 +6,11 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from screeninfo import get_monitors
-def plucker_intersection(line_point, line_dir, plane_normal_vector):
+def plucker_intersection(line_point, line_dir, plane_point, plane_normal_vector):
     pa = np.append(line_point, 1).reshape(1, -1)
     dr = np.append(line_dir, 0).reshape(1, -1)
-    pln = np.append(plane_normal_vector, 0).reshape(1, -1)
+    dot = np.dot(plane_point,plane_normal_vector)
+    pln = np.append(plane_normal_vector, dot).reshape(1, -1)
     res = dr * (pa @ pln.T) - pa * (dr @ pln.T)
     res = res[0]
     res = res/res[-1]
@@ -134,7 +135,7 @@ if __name__ == "__main__":
             pickle.dump(dataset,f)
         fig = plt.figure(figsize=(10,10))
         ax = plt.axes(projection='3d')
-        for ky in ["50,50","960,540"]:#rays_3d.keys():
+        for ky in rays_3d.keys():  # ["50,50","960,540"]:
             for pt3d1,pt3d2 in rays_3d[ky]:
                 pt3d2 = pt3d2 * 1e4 + pt3d1 
                 ax.plot([pt3d1[0],pt3d2[0]], [pt3d1[1],pt3d2[1]], [pt3d1[2],pt3d2[2]], label='parametric curve')
@@ -160,11 +161,14 @@ if __name__ == "__main__":
         from time import time
         def fit(x):
             t1 = time()
-            r = R.from_rotvec(x[:3])
-            t = np.array(x[3:])
-            new_corners = corners_3d @ r.as_matrix() + t
+            r = R.from_rotvec(x[3:]).as_matrix()
+            t = np.array([2, 2, 2])#np.array(x[:3])
+            if len(t) <3 :
+                t = np.append(t,0)
+            new_corners = corners_3d @ r + t
             p1, p2, p3 = new_corners[0], new_corners[2], new_corners[4]
             plane = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
+            plane_point = list(map(float,(plane.p1.coordinates)))
             normal_vector = np.array(list(map(float, plane.normal_vector)))
             error = 0
             for srt_key, aCorner in zip(sorted_keys,new_corners):
@@ -174,17 +178,22 @@ if __name__ == "__main__":
                     #     list(map(float, plane.intersection(aRay)[0].coordinates)))
                     apt = (list(map(float, (aRay.points[0].coordinates))))
                     ldir = list(map(float,(aRay.direction_ratio)))
-                    intersect = plucker_intersection(apt,ldir,normal_vector)
+                    intersect = plucker_intersection(apt,ldir,plane_point,normal_vector)
+                    print("r:",r)
+                    print("t:",t)
+                    print("aray:\n",aRay)
+                    print("plane:\n",plane)
+                    print(intersect)
+                    print(list(map(float,plane.intersection(aRay)[0].coordinates)))
+                    print("======")
                     error += np.linalg.norm(np.abs(intersect - aCorner))
             t2 = time()
             print("error:",error,"time:",t2-t1)
             return error
         x0 = np.array([0.0001, 0.0001, 0.0001, -0.1, 0.1, 0.0001])
         sorted_keys = sorted(list(dataset.keys()),key=lambda x: eval(x))
-        res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.001})
-        # res = least_squares(fit, x0, 
-        #     #args=(dataset,sorted_keys)
-        #     )
+        res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.00001},) #bounds=[(-500, 500),(-500, 500)])
+        # res = least_squares(fit, x0,)
         # res = gp_minimize(fit,                  # the function to minimize
         #           [(-3.14, 3.14),(-3.14, 3.14),(-3.14, 3.14),(-2e3,2e3),(-2e3,2e3),(-2e3,2e3)],      # the bounds on each dimension of x
         #           acq_func="EI",      # the acquisition function
@@ -192,9 +201,11 @@ if __name__ == "__main__":
         #           n_initial_points=1024,  # the number of random initialization points
         #           noise=0.5,       # the noise level (optional)
         #           random_state=1234)   # the random seed
-        r = R.from_rotvec(res.x[:3])
-        t = np.array(res.x[3:])
-        new_corners = corners_3d @ r.as_matrix() + t
+        r = R.from_rotvec(res.x[3:]).as_matrix()
+        t = np.array(res.x[:3])
+        if len(t) <3 :
+            t = np.append(t,0)
+        new_corners = corners_3d @ r + t
         fig = plt.figure(figsize=(10,10))
         ax = plt.axes(projection='3d')
         for ky in rays_3d.keys():
@@ -203,4 +214,7 @@ if __name__ == "__main__":
                 ax.plot([pt3d1[0],pt3d2[0]], [pt3d1[1],pt3d2[1]], [pt3d1[2],pt3d2[2]], label='parametric curve')
                 ax.scatter(pt3d1[0],pt3d1[1],pt3d1[2])
         ax.scatter(new_corners[:,0],new_corners[:,1],new_corners[:,2])
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
         plt.show()
