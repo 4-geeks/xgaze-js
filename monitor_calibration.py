@@ -236,7 +236,7 @@ if __name__ == "__main__":
             xres = res.x
         elif algo == "MIN":
             res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 1e-5}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
-                                                                                            (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
+                                                                                       (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
             xres = res.x
         elif algo == "GP":
             res = gp_minimize(fit,                  # the function to minimize
