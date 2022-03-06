@@ -85,8 +85,9 @@ def save_sample(image, coords, data_folder):
     sample_name = f"{uniqueId}_{coords}".replace(" ", "")
     cv2.imwrite(os.path.join(data_folder, sample_name+".jpg"), image)
 
+
 data_gathering = False
-algo = "LS" # choose between: [LS,MIN,GP,GA]
+algo = "LS"  # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
     if data_gathering:
@@ -163,7 +164,7 @@ if __name__ == "__main__":
             print()
             rays_3d[str_coords] = rays_3d.get(
                 str_coords, []) + [[face.center, face.gaze_vector]]
-                # dataset[str_coords] = dataset.get(str_coords, []) + [aRay]
+            # dataset[str_coords] = dataset.get(str_coords, []) + [aRay]
 
         for str_coords in rays_3d.keys():
             rays_3d[str_coords] = [np.mean(rays_3d[str_coords], 0).tolist()]
@@ -229,25 +230,25 @@ if __name__ == "__main__":
             return - error
         sorted_keys = sorted(list(dataset.keys()), key=lambda x: eval(x))
         x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
-        if algo=="LS":
+        if algo == "LS":
             res = least_squares(fit, x0, bounds=[(-np.inf, -0.01, -0.01, -0.01, -0.01, -0.01),
-                                                (np.inf,   0.01,  0.01,  0.01,  0.01,  0.01)])
-            xres = res.x                                                
-        elif algo=="MIN":
+                                                 (np.inf,   0.01,  0.01,  0.01,  0.01,  0.01)])
+            xres = res.x
+        elif algo == "MIN":
             res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.0000001}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
                                                                                             (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
             xres = res.x
-        elif algo=="GP":
+        elif algo == "GP":
             res = gp_minimize(fit,                  # the function to minimize
-                            [(-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1),
-                            (-0.1, 0.1), (-0.1, 0.1)],      # the bounds on each dimension of x
-                            acq_func="EI",      # the acquisition function
-                            n_calls=1024,         # the number of evaluations of f
-                            n_initial_points=16,  # the number of random initialization points
-                            noise=0.5,       # the noise level (optional)
-                            random_state=1234)   # the random seed
+                              [(-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1),
+                               (-0.1, 0.1), (-0.1, 0.1)],      # the bounds on each dimension of x
+                              acq_func="EI",      # the acquisition function
+                              n_calls=1024,         # the number of evaluations of f
+                              n_initial_points=16,  # the number of random initialization points
+                              noise=0.5,       # the noise level (optional)
+                              random_state=1234)   # the random seed
             xres = res.x
-        elif algo=="GA":
+        elif algo == "GA":
             fitness_function = fit
             num_generations = 2
             num_parents_mating = 4
@@ -261,17 +262,17 @@ if __name__ == "__main__":
             mutation_type = "random"
             mutation_percent_genes = 10
             ga_instance = pygad.GA(num_generations=num_generations,
-                       num_parents_mating=num_parents_mating,
-                       fitness_func=fitness_function,
-                       sol_per_pop=sol_per_pop,
-                       num_genes=num_genes,
-                       init_range_low=init_range_low,
-                       init_range_high=init_range_high,
-                       parent_selection_type=parent_selection_type,
-                       keep_parents=keep_parents,
-                       crossover_type=crossover_type,
-                       mutation_type=mutation_type,
-                       mutation_percent_genes=mutation_percent_genes)
+                                   num_parents_mating=num_parents_mating,
+                                   fitness_func=fitness_function,
+                                   sol_per_pop=sol_per_pop,
+                                   num_genes=num_genes,
+                                   init_range_low=init_range_low,
+                                   init_range_high=init_range_high,
+                                   parent_selection_type=parent_selection_type,
+                                   keep_parents=keep_parents,
+                                   crossover_type=crossover_type,
+                                   mutation_type=mutation_type,
+                                   mutation_percent_genes=mutation_percent_genes)
             ga_instance.run()
             solution, solution_fitness, solution_idx = ga_instance.best_solution()
             xres = solution
@@ -292,7 +293,7 @@ if __name__ == "__main__":
         ax.set_xlabel("x")
         ax.set_ylabel("y")
         ax.set_zlabel("z")
-        ax.set_xlim(-0.8,0.8)
-        ax.set_ylim(-0.8,0.8)
-        ax.set_zlim(-0.8,0.8)
+        ax.set_xlim(-0.8, 0.8)
+        ax.set_ylim(-0.8, 0.8)
+        ax.set_zlim(-0.8, 0.8)
         plt.show()
