@@ -90,8 +90,8 @@ def save_sample(image, coords, data_folder):
     cv2.imwrite(os.path.join(data_folder, sample_name+".jpg"), image)
 
 show_default = True
-data_gathering = True
-algo = "LS"  # choose between: [LS,MIN,GP,GA]
+data_gathering = False
+algo = "GA"  # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
     checkpoint_path = os.path.join(data_folder, "finetuned_eth-xgaze_resnet18.pth")
@@ -240,8 +240,8 @@ if __name__ == "__main__":
         sorted_keys = sorted(list(dataset.keys()), key=lambda x: eval(x))
         x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
         if algo == "LS":
-            res = least_squares(fit, x0, bounds=[(-np.inf, -0.01, -0.01, -0.01, -0.01, -0.01),
-                                                 (np.inf,   0.01,  0.01,  0.01,  0.01,  0.01)])
+            res = least_squares(fit, x0, bounds=[(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5),
+                                                 (0.5,   0.5,  0.5,  0.5,  0.5,  0.5)])
             xres = res.x
         elif algo == "MIN":
             res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 1e-5}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
@@ -259,7 +259,7 @@ if __name__ == "__main__":
             xres = res.x
         elif algo == "GA":
             fitness_function = fit
-            num_generations = 2
+            num_generations = 20
             num_parents_mating = 4
             sol_per_pop = 8
             num_genes = len(x0)
