@@ -85,8 +85,8 @@ def save_sample(image, coords, data_folder):
     sample_name = f"{uniqueId}_{coords}".replace(" ", "")
     cv2.imwrite(os.path.join(data_folder, sample_name+".jpg"), image)
 
-
 data_gathering = False
+algo = "LS" # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
     if data_gathering:
@@ -227,23 +227,27 @@ if __name__ == "__main__":
             t2 = time()
             print("error:", error, "time:", t2-t1)
             return - error
-
-        x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
         sorted_keys = sorted(list(dataset.keys()), key=lambda x: eval(x))
-
-        # res = least_squares(fit, x0, bounds=[(-np.inf, -0.01, -0.01, -0.01, -0.01, -0.01),
-        #                                      (np.inf,   0.01,  0.01,  0.01,  0.01,  0.01)])
-        # res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.0000001}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
-        #                                                                                 (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
-        # res = gp_minimize(fit,                  # the function to minimize
-        #                   [(-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1),
-        #                    (-0.1, 0.1), (-0.1, 0.1)],      # the bounds on each dimension of x
-        #                   acq_func="EI",      # the acquisition function
-        #                   n_calls=1024,         # the number of evaluations of f
-        #                   n_initial_points=16,  # the number of random initialization points
-        #                   noise=0.5,       # the noise level (optional)
-        #                   random_state=1234)   # the random seed
-        if False:
+        x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
+        if algo=="LS":
+            res = least_squares(fit, x0, bounds=[(-np.inf, -0.01, -0.01, -0.01, -0.01, -0.01),
+                                                (np.inf,   0.01,  0.01,  0.01,  0.01,  0.01)])
+            xres = res.x                                                
+        elif algo=="MIN":
+            res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 0.0000001}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
+                                                                                            (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
+            xres = res.x
+        elif algo=="GP":
+            res = gp_minimize(fit,                  # the function to minimize
+                            [(-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1), (-0.1, 0.1),
+                            (-0.1, 0.1), (-0.1, 0.1)],      # the bounds on each dimension of x
+                            acq_func="EI",      # the acquisition function
+                            n_calls=1024,         # the number of evaluations of f
+                            n_initial_points=16,  # the number of random initialization points
+                            noise=0.5,       # the noise level (optional)
+                            random_state=1234)   # the random seed
+            xres = res.x
+        elif algo=="GA":
             fitness_function = fit
             num_generations = 2
             num_parents_mating = 4
@@ -270,7 +274,9 @@ if __name__ == "__main__":
                        mutation_percent_genes=mutation_percent_genes)
             ga_instance.run()
             solution, solution_fitness, solution_idx = ga_instance.best_solution()
-        xres = x0 #res.x #solution
+            xres = solution
+        else:
+            xres = x0
         r = R.from_rotvec(xres[3:]).as_matrix()
         t = np.array(xres[:3])
         new_corners = corners_3d @ r + t
