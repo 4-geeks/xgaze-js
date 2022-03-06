@@ -4,8 +4,12 @@ from glob import glob
 
 import cv2
 import matplotlib.pyplot as plt
+import mediapipe as mp
 import numpy as np
 from screeninfo import get_monitors
+from sympy import Line3D, Matrix, Plane, Point3D
+
+from asset import GazeEstimator, detect_faces_mediapipe, gaze2point, mm2px
 
 
 def plucker_intersection(line_point, line_dir, plane_point, plane_normal_vector):
@@ -85,11 +89,18 @@ def save_sample(image, coords, data_folder):
     sample_name = f"{uniqueId}_{coords}".replace(" ", "")
     cv2.imwrite(os.path.join(data_folder, sample_name+".jpg"), image)
 
-
-data_gathering = False
+show_default = True
+data_gathering = True
 algo = "LS"  # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
+    checkpoint_path = os.path.join(data_folder, "finetuned_eth-xgaze_resnet18.pth")
+    camera_params = os.path.join(data_folder, "sample_params.yaml")
+    normalized_camera_params = os.path.join(data_folder, "eth-xgaze.yaml")
+    estimator = GazeEstimator(
+        checkpoint_path, camera_params, normalized_camera_params)
+    detector = mp.solutions.face_mesh.FaceMesh(
+        max_num_faces=1, static_image_mode=True)
     if data_gathering:
         cv2.namedWindow("boom", cv2.WND_PROP_FULLSCREEN)
         # cv2.moveWindow("boom", 1920,0)
@@ -103,8 +114,6 @@ if __name__ == "__main__":
             height_mm = monitor.height_mm
             corners = corner_pixels(mH, mW, xpad=50, ypad=50)
             corner_index = 0
-            boom, coords = draw_marker(
-                mH, mW, x=corners[corner_index][0], y=corners[corner_index][1])
 
             cap = cv2.VideoCapture(0)
             while cap.isOpened():
@@ -112,6 +121,15 @@ if __name__ == "__main__":
                 if not success:
                     continue
                 canvas = image.copy()
+                if show_default:
+                    faces = detect_faces_mediapipe(detector, image)
+                    face = faces[0]
+                    estimator.estimate(face, image)
+                    x,y = gaze2point(face.center * 1e3, face.gaze_vector)
+                    x,y = mm2px((x,y))
+                    boom, coords = draw_marker(
+                    mH, mW, x=corners[corner_index][0], y=corners[corner_index][1])
+                    cv2.circle(boom,(x,y), 7, (86, 55, 15), -1)
                 cv2.putText(boom, str(coords), coords,
                             cv2.FONT_HERSHEY_COMPLEX, 2, (0, 0, 0), 2)
                 cv2.imshow("boom", boom)
@@ -132,18 +150,8 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
             cap.release()
     else:
-        from sympy import Plane, Point3D, Line3D, Matrix
-        import mediapipe as mp
-        from asset import detect_faces_mediapipe, GazeEstimator, gaze2point
         out_dir = os.path.join(data_folder, "faces")
         os.makedirs(out_dir, exist_ok=True)
-        checkpoint_path = os.path.join(data_folder, "eth-xgaze_resnet18.pth")
-        camera_params = os.path.join(data_folder, "sample_params.yaml")
-        normalized_camera_params = os.path.join(data_folder, "eth-xgaze.yaml")
-        estimator = GazeEstimator(
-            checkpoint_path, camera_params, normalized_camera_params)
-        detector = mp.solutions.face_mesh.FaceMesh(
-            max_num_faces=1, static_image_mode=True)
         images_list = glob(os.path.join(data_folder, frame_folder, "*.jpg"))
         dataset = {}
         rays_3d = {}
@@ -200,12 +208,13 @@ if __name__ == "__main__":
         corners_3d = np.hstack([corners_3d, np.zeros((len(corners_3d), 1))])
         corners_3d = corners_3d / 1e3
         # let's solve this !
+        from time import time
+
+        import pygad
+        from scipy.optimize import least_squares, minimize
         from scipy.spatial.transform import Rotation as R
         from sklearn.metrics import mean_squared_error
-        from scipy.optimize import minimize, least_squares
         from skopt import gp_minimize
-        from time import time
-        import pygad
 
         def fit(x, solution_idx=None):
             t1 = time()
