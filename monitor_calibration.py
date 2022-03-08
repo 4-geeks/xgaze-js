@@ -89,12 +89,14 @@ def save_sample(image, coords, data_folder):
     sample_name = f"{uniqueId}_{coords}".replace(" ", "")
     cv2.imwrite(os.path.join(data_folder, sample_name+".jpg"), image)
 
+
 show_default = True
 data_gathering = False
 algo = "GA"  # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
-    checkpoint_path = os.path.join(data_folder, "finetuned_eth-xgaze_resnet18.pth")
+    checkpoint_path = os.path.join(
+        data_folder, "finetuned_eth-xgaze_resnet18.pth")
     camera_params = os.path.join(data_folder, "sample_params.yaml")
     normalized_camera_params = os.path.join(data_folder, "eth-xgaze.yaml")
     estimator = GazeEstimator(
@@ -125,11 +127,11 @@ if __name__ == "__main__":
                     faces = detect_faces_mediapipe(detector, image)
                     face = faces[0]
                     estimator.estimate(face, image)
-                    x,y = gaze2point(face.center * 1e3, face.gaze_vector)
-                    x,y = mm2px((x,y))
+                    x, y = gaze2point(face.center * 1e3, face.gaze_vector)
+                    x, y = mm2px((x, y))
                     boom, coords = draw_marker(
-                    mH, mW, x=corners[corner_index][0], y=corners[corner_index][1])
-                    cv2.circle(boom,(x,y), 7, (86, 55, 15), -1)
+                        mH, mW, x=corners[corner_index][0], y=corners[corner_index][1])
+                    cv2.circle(boom, (x, y), 7, (86, 55, 15), -1)
                 cv2.putText(boom, str(coords), coords,
                             cv2.FONT_HERSHEY_COMPLEX, 2, (0, 0, 0), 2)
                 cv2.imshow("boom", boom)
@@ -206,7 +208,9 @@ if __name__ == "__main__":
         corners_3d = (corners / np.array([mW, mH])) * \
             np.array([width_mm, height_mm])
         corners_3d = np.hstack([corners_3d, np.zeros((len(corners_3d), 1))])
+        # convert from mm to meter (m)
         corners_3d = corners_3d / 1e3
+
         # let's solve this !
         from time import time
 
@@ -216,15 +220,20 @@ if __name__ == "__main__":
         from sklearn.metrics import mean_squared_error
         from skopt import gp_minimize
 
-        def fit(x, solution_idx=None):
+        def fit(x, solution_idx=None, **kwargs):
             t1 = time()
             r = R.from_rotvec(x[3:]).as_matrix()
             t = np.array(x[:3])
             new_corners = corners_3d @ r + t
-            p1, p2, p3 = new_corners[0], new_corners[2], new_corners[4]
+            if len(new_corners) > 4:
+                p1, p2, p3 = new_corners[0], new_corners[2], new_corners[7]
+            else:
+                p1, p2, p3 = new_corners[0], new_corners[1], new_corners[2]
             plane = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
             plane_point = list(map(float, (plane.p1.coordinates)))
             normal_vector = np.array(list(map(float, plane.normal_vector)))
+            intersections = []
+            inter_corners = []
             error = 0
             for srt_key, aCorner in zip(sorted_keys, new_corners):
                 rays = dataset[srt_key]
@@ -234,11 +243,27 @@ if __name__ == "__main__":
                     intersect = intersection(
                         apt, ldir, plane_point, normal_vector)
                     error += np.linalg.norm(np.abs(intersect - aCorner))
+                    intersections.append(intersect)
+                    inter_corners.append(aCorner)
+                    
             t2 = time()
             print("error:", error, "time:", t2-t1)
-            return - error
+            if kwargs.get('return_intersections'):
+                return error, np.array(intersections), np.array(inter_corners)
+            else:
+                if algo == "GA":
+                    return - error
+                else:
+                    return error
+
         sorted_keys = sorted(list(dataset.keys()), key=lambda x: eval(x))
-        x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
+        corners = np.array([eval(st) for st in sorted_keys])
+        corners_3d = (corners / np.array([mW, mH])) * \
+            np.array([width_mm, height_mm])
+        corners_3d = np.hstack([corners_3d, np.zeros((len(corners_3d), 1))])
+        # convert from mm to meter (m)
+        corners_3d = corners_3d / 1e3
+        x0 = np.array([-0.18, 0.0, -0.2, 0.0, 0.0, 0.0])
         if algo == "LS":
             res = least_squares(fit, x0, bounds=[(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5),
                                                  (0.5,   0.5,  0.5,  0.5,  0.5,  0.5)])
@@ -259,7 +284,7 @@ if __name__ == "__main__":
             xres = res.x
         elif algo == "GA":
             fitness_function = fit
-            num_generations = 20
+            num_generations = 40
             num_parents_mating = 4
             sol_per_pop = 8
             num_genes = len(x0)
@@ -286,6 +311,8 @@ if __name__ == "__main__":
             solution, solution_fitness, solution_idx = ga_instance.best_solution()
             xres = solution
         else:
+            x0 = np.array([-0.30, 0.0, 0.0, 0.0, 0.0, 0.0])
+            err, intersections, inter_corners = fit(x0, return_intersections=True)
             xres = x0
         r = R.from_rotvec(xres[3:]).as_matrix()
         t = np.array(xres[:3])
