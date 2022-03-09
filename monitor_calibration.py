@@ -92,7 +92,7 @@ def save_sample(image, coords, data_folder):
 
 show_default = True
 data_gathering = False
-algo = "GA"  # choose between: [LS,MIN,GP,GA]
+algo = "x"  # choose between: [LS,MIN,GP,GA]
 monitors = get_monitors()
 if __name__ == "__main__":
     checkpoint_path = os.path.join(
@@ -220,6 +220,7 @@ if __name__ == "__main__":
         from sklearn.metrics import mean_squared_error
         from skopt import gp_minimize
 
+
         def fit(x, solution_idx=None, **kwargs):
             t1 = time()
             r = R.from_rotvec(x[3:]).as_matrix()
@@ -263,14 +264,14 @@ if __name__ == "__main__":
         corners_3d = np.hstack([corners_3d, np.zeros((len(corners_3d), 1))])
         # convert from mm to meter (m)
         corners_3d = corners_3d / 1e3
-        x0 = np.array([-0.18, 0.0, -0.2, 0.0, 0.0, 0.0])
+        x0 = np.array([-0.18, 0.0, -0.0, 0.0, 0.0, 0.0])
         if algo == "LS":
-            res = least_squares(fit, x0, bounds=[(-0.5, -0.5, -0.5, -0.5, -0.5, -0.5),
-                                                 (0.5,   0.5,  0.5,  0.5,  0.5,  0.5)])
+            res = least_squares(fit, x0, bounds=[(-0.5, -0.1, -0.1, -0.05, -0.05, -0.05),
+                                                 (0.5,   0.1,  0.1,  0.05,  0.05,  0.05)])
             xres = res.x
         elif algo == "MIN":
             res = minimize(fit, x0, method='L-BFGS-B', options={'ftol': 1e-5}, bounds=[(-np.inf, np.inf), (-np.inf, np.inf), (-0.1, 0.1),
-                                                                                       (-np.inf, np.inf),  (-np.inf, np.inf), (-np.inf, np.inf)])
+                                                                                       (-np.inf, np.inf), (-np.inf, np.inf), (-np.inf, np.inf)])
             xres = res.x
         elif algo == "GP":
             res = gp_minimize(fit,                  # the function to minimize
@@ -311,7 +312,7 @@ if __name__ == "__main__":
             solution, solution_fitness, solution_idx = ga_instance.best_solution()
             xres = solution
         else:
-            x0 = np.array([-0.30, 0.0, 0.0, 0.0, 0.0, 0.0])
+            x0 = np.array([-0.18, 0.0, 0.0, 0.0, 0.0, 0.0])
             err, intersections, inter_corners = fit(x0, return_intersections=True)
             xres = x0
         r = R.from_rotvec(xres[3:]).as_matrix()
