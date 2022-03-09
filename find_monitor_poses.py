@@ -52,7 +52,7 @@ width_mm = monitor.width_mm
 mH = monitor.height
 height_mm = monitor.height_mm
 
-df = pd.read_csv("dataset.csv")
+df = pd.read_csv("data/dataset.csv")
 df = df.applymap(eval)
 
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         solution, solution_fitness, solution_idx = ga_instance.best_solution()
         xres = solution
     elif algo == "optuna":
-        bounds = [(-0.2, 0.0), (-0.01, 0.01), (-0.01, 0.01),
+        bounds = [(-0.2, 0.0), (-0.1, 0.1), (-0.1, 0.1),
                   (-0.01, 0.01), (-0.01, 0.01), (-0.01, 0.01)]
 
         def objective(trial):
@@ -154,9 +154,11 @@ if __name__ == "__main__":
             error = fit(x=trial_x)
             return error
         study = optuna.create_study()
-        study.optimize(objective, n_trials=1000)
-        print(study.best_params)
+        study.optimize(objective, n_trials=100)
+        xres = list(study.best_params.values())
     else:
         x0 = np.array([-0.16, 0.0, 0.0, 0.0, 0.0, 0.0])
         err = fit(x0)
         xres = x0
+    with open("poses.txt","w") as f:
+        f.write(str(list(xres)))    
